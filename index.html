@@ -504,6 +504,7 @@ input[type=file]{display:none;}
 <!-- EXPORT BAR -->
 <footer class="expbar">
   <span class="exp-lbl" id="fmtLbl">Instagram Cuadrado — 1080×1080</span>
+  <button class="btn btn-clr" onclick="clearAll()">🗑 Limpiar</button>
   <button class="btn btn-o" onclick="exportImg('copy')">📋 Copiar</button>
   <button class="btn btn-g" onclick="exportImg('download')">⬇ Descargar</button>
 </footer>
@@ -604,16 +605,17 @@ function defaultPos(key){
     return{x:Math.round((W-w)/2),y:Math.round(H*.52),w,h};
   }
   if(key==='cat'){
-    const w=Math.round(W*.28),h=Math.round(H*.055);
-    if(S.tpl==='normal')return{x:Math.round((W-w)/2),y:pad,w,h};
+    const w=Math.round(W*.36),h=Math.round(H*.072); // +30% más grande
+    const sz=Math.round(h*.58);
+    if(S.tpl==='normal')return{x:Math.round((W-w)/2),y:pad,w,h,sz,textW:w};
     if(S.tpl==='banda'||S.tpl==='verde'){
-      return{x:pad,y:H-Math.round(H*.32)+Math.round(H*.01),w,h};
+      return{x:pad,y:H-Math.round(H*.32)+Math.round(H*.01),w,h,sz,textW:w};
     }
-    return{x:pad,y:Math.round(H*.46),w,h};
+    return{x:pad,y:Math.round(H*.46),w,h,sz,textW:w};
   }
   if(key==='logo'){
     if(!S.logoImg)return{x:pad,y:pad,w:Math.round(W*.26),h:Math.round(W*.09)};
-    const lw=Math.round(W*.234); // 0.18 * 1.3 = 30% más grande
+    const lw=Math.round(W*.26); // tamaño grande
     const lh=Math.round(lw*(S.logoImg.height/S.logoImg.width));
     if(S.tpl==='normal')return{x:Math.round((W-lw)/2),y:H-lh-pad,w:lw,h:lh};
     return{x:W-lw-pad,y:pad,w:lw,h:lh};
@@ -747,27 +749,38 @@ function drawCat(){
   const el=ELS.cat;
   if(!el.visible||!S.cat)return;
   ctx.save();
+
+  // Fondo del recuadro
   const r=hexRgb(S.cBg);
   ctx.fillStyle=`rgba(${r.r},${r.g},${r.b},${S.cBgOp})`;
   roundRect(ctx,el.x,el.y,el.w,el.h,5);ctx.fill();
-  const padX=Math.round(el.w*.04),padY=Math.round(el.h*.06);
-  const availW=el.w-padX*2;
+
+  // sz fijo (no depende del recuadro), textW controla el ancho del texto
+  const sz=el.sz||Math.round(el.h*.58);
+  const textW=el.textW||el.w;
+  const padX=Math.round(textW*.04);
+  const availW=textW-padX*2;
   if(availW<=0){ctx.restore();return;}
-  let sz=Math.max(8,Math.round(el.h*.58));
-  let lines=[];
-  for(let i=0;i<10;i++){
-    ctx.font=`700 ${sz}px 'Economica',sans-serif`;
-    lines=wrapText(ctx,toTitleCase(S.cat),availW);
-    if(lines.length*sz*1.12+padY*2<=el.h)break;
-    sz=Math.max(8,Math.round(sz*.87));
-  }
+
   ctx.font=`700 ${sz}px 'Economica',sans-serif`;
-  lines=wrapText(ctx,toTitleCase(S.cat),availW);
-  const lh=sz*1.12,totalH=lines.length*lh;
-  ctx.fillStyle=S.cCol;ctx.textBaseline='top';ctx.textAlign='center';
-  const startY=el.y+padY+(el.h-padY*2-totalH)/2;
+  ctx.textBaseline='top';
+  const lines=wrapText(ctx,toTitleCase(S.cat),availW);
+
+  // Medir bloque visual real
+  const mRef=ctx.measureText('M');
+  const glyphAscent=mRef.actualBoundingBoxAscent  || sz*.72;
+  const glyphDescent=mRef.actualBoundingBoxDescent || sz*.1;
+  const glyphH=glyphAscent+glyphDescent;
+  const lh=sz*1.12;
+  const blockH=(lines.length-1)*lh + glyphH;
+
+  // Centrar el bloque de texto en el recuadro
+  const startY = el.y + (el.h - blockH) / 2;
+  ctx.fillStyle=S.cCol;
+  ctx.textAlign='center';
+  ctx.textBaseline='top';
   const cx=el.x+el.w/2;
-  lines.forEach((l,i)=>ctx.fillText(l,cx,startY+i*lh));
+  lines.forEach((l,i)=>ctx.fillText(l, cx, startY + i*lh));
   ctx.restore();
 }
 
@@ -775,48 +788,35 @@ function drawTitle(){
   const el=ELS.title;
   if(!el.visible||!S.title)return;
   ctx.save();
-  const padX=Math.round(el.w*.025);
-  const availW=el.w-padX*2;
+
+  // sz fijo (no depende del recuadro), textW controla el ancho del texto
+  const sz=el.sz||Math.round(el.h*.38);
+  const textW=el.textW||el.w;
+  const padX=Math.round(textW*.025);
+  const availW=textW-padX*2;
   if(availW<=0){ctx.restore();return;}
 
-  // 1. Encontrar tamaño de fuente que quepa verticalmente
-  let sz=Math.max(10,Math.round(el.h*.38));
-  ctx.textBaseline='top';
-  for(let i=0;i<20;i++){
-    ctx.font=`400 ${sz}px 'BebasNeue',sans-serif`;
-    const lines=wrapText(ctx,S.title,availW);
-    // Medir altura real del bloque: desde top del primer glifo hasta bottom del último
-    const m0=ctx.measureText(lines[0]||'M');
-    const mN=ctx.measureText(lines[lines.length-1]||'M');
-    const lineH=m0.actualBoundingBoxAscent+m0.actualBoundingBoxDescent;
-    const blockH=(lines.length-1)*sz*1.12 + lineH;
-    if(blockH + sz*.4 <= el.h) break; // sz*.4 = padding total vertical
-    sz=Math.max(10,Math.round(sz*.9));
-  }
   ctx.font=`400 ${sz}px 'BebasNeue',sans-serif`;
+  ctx.textBaseline='top';
   const lines=wrapText(ctx,S.title,availW);
 
-  // 2. Medir altura real del bloque con esta fuente
+  // Medir bloque visual real
   const mRef=ctx.measureText('M');
   const glyphAscent=mRef.actualBoundingBoxAscent  || sz*.72;
   const glyphDescent=mRef.actualBoundingBoxDescent || sz*.1;
-  const glyphH=glyphAscent+glyphDescent;          // altura visual real de un glifo
-  const lh=sz*1.12;                               // interlineado
-  const blockH=(lines.length-1)*lh + glyphH;     // alto total del bloque
+  const glyphH=glyphAscent+glyphDescent;
+  const lh=sz*1.12;
+  const blockH=(lines.length-1)*lh + glyphH;
 
-  // 3. Fondo
+  // Fondo del recuadro (usa el.w/el.h = dimensiones del recuadro)
   if(S.tBg!=='transparent'&&S.tBgOp>0){
     const r=hexRgb(S.tBg);
     ctx.fillStyle=`rgba(${r.r},${r.g},${r.b},${S.tBgOp})`;
     roundRect(ctx,el.x,el.y,el.w,el.h,6);ctx.fill();
   }
 
-  // 4. Posición Y: centrar el bloque visual en el recuadro
-  //    Con baseline='top', la Y es el tope del glifo.
-  //    El centro del recuadro menos la mitad del bloque visual.
-  const blockTop = el.y + (el.h - blockH) / 2;  // borde superior del bloque visual
-  const startY   = blockTop;                      // baseline='top' → Y = tope del glifo
-
+  // Centrar el bloque de texto en el recuadro
+  const startY = el.y + (el.h - blockH) / 2;
   ctx.fillStyle=S.tCol;
   ctx.textAlign='center';
   ctx.textBaseline='top';
@@ -914,7 +914,9 @@ function onDown(e){
     if(hid){
       S.action='resize-'+hid;
       S.resizeStart={pos:{...pos},rect:{...ELS[S.active]},
-        logoAR:S.active==='logo'&&S.logoImg?S.logoImg.width/S.logoImg.height:null};
+        logoAR:S.active==='logo'&&S.logoImg?S.logoImg.width/S.logoImg.height:null,
+        sz:ELS[S.active].sz||null,
+        textW:ELS[S.active].textW||null};
       return;
     }
   }
@@ -948,20 +950,48 @@ function onMove(e){
     const dx=pos.x-rs.pos.x,dy=pos.y-rs.pos.y;
     const MIN=W*.04;
     let{x,y,w,h}=rs.rect;
+    const isText = S.active==='title'||S.active==='cat';
+
     if(rs.logoAR){
+      // Logo: proporcional siempre
       if(corner==='se'){w=Math.max(MIN,w+dx);h=w/rs.logoAR;}
       else if(corner==='sw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;h=w/rs.logoAR;}
       else if(corner==='ne'){w=Math.max(MIN,w+dx);const nh=w/rs.logoAR;y=rs.rect.y+rs.rect.h-nh;h=nh;}
       else if(corner==='nw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;const nh=w/rs.logoAR;y=rs.rect.y+rs.rect.h-nh;h=nh;}
+      el.x=x;el.y=y;el.w=w;el.h=h;
+
+    } else if(isText && (corner==='e'||corner==='w')){
+      // Sides en texto: cambia textW (ancho del texto) y sz (tamaño fuente) — NO el recuadro
+      const MINTEXT=W*.08;
+      const oldTextW=rs.rect.textW||rs.rect.w;
+      let newTextW;
+      if(corner==='e') newTextW=Math.max(MINTEXT, oldTextW+dx);
+      else             newTextW=Math.max(MINTEXT, oldTextW-dx);
+      // Escalar sz proporcionalmente al cambio de textW
+      const ratio=newTextW/oldTextW;
+      const baseSz=rs.rect.sz||(rs.rect.h*(S.active==='title'?.38:.58));
+      el.sz=Math.max(12, Math.round(baseSz*ratio));
+      el.textW=newTextW;
+      // Recuadro no cambia
+
+    } else if(isText){
+      // Corners en texto: cambia SOLO el recuadro (x,y,w,h), texto queda igual
+      if(corner==='se'){w=Math.max(MIN,w+dx);h=Math.max(MIN,h+dy);}
+      else if(corner==='sw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;h=Math.max(MIN,h+dy);}
+      else if(corner==='ne'){w=Math.max(MIN,w+dx);const nh=Math.max(MIN,h-dy);y=rs.rect.y+rs.rect.h-nh;h=nh;}
+      else if(corner==='nw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;const nh=Math.max(MIN,h-dy);y=rs.rect.y+rs.rect.h-nh;h=nh;}
+      el.x=x;el.y=y;el.w=w;el.h=h;
+
     } else {
+      // Otros elementos (fallback)
       if(corner==='se'){w=Math.max(MIN,w+dx);h=Math.max(MIN,h+dy);}
       else if(corner==='sw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;h=Math.max(MIN,h+dy);}
       else if(corner==='ne'){w=Math.max(MIN,w+dx);const nh=Math.max(MIN,h-dy);y=rs.rect.y+rs.rect.h-nh;h=nh;}
       else if(corner==='nw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;const nh=Math.max(MIN,h-dy);y=rs.rect.y+rs.rect.h-nh;h=nh;}
       else if(corner==='e'){w=Math.max(MIN,w+dx);}
       else if(corner==='w'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;}
+      el.x=x;el.y=y;el.w=w;el.h=h;
     }
-    el.x=x;el.y=y;el.w=w;el.h=h;
   }
   render();
 }
@@ -1026,8 +1056,8 @@ async function fetchUrl(){
     document.getElementById('titIn').value=data.title||'';S.title=data.title||'';
     const cat=(data.category||'').replace(/_/g,' ');
     document.getElementById('catIn').value=cat;S.cat=cat;
-    ELS.title={x:null,y:null,w:null,h:null,visible:true};
-    ELS.cat={x:null,y:null,w:null,h:null,visible:true};
+    ELS.title={x:null,y:null,w:null,h:null,sz:null,textW:null,visible:true};
+    ELS.cat={x:null,y:null,w:null,h:null,sz:null,textW:null,visible:true};
     if(data.image)await loadRemoteImg(data.image);
     else showToast('Sin imagen. Subí una manualmente.');
     render();drawPreviews();
@@ -1101,6 +1131,34 @@ function renderClean(){
       },'image/jpeg',.93);
     });
   });
+}
+
+function clearAll(){
+  S.title=''; S.cat=''; S.bgImg=null;
+  S.iDark=0; S.iBlur=0; S.imgX=0; S.imgY=0;
+  S.ovActive=false; S.ovCol='#000000'; S.ovOp=0.5;
+  S.tCol='#ffffff'; S.tBg='#000000'; S.tBgOp=0.8;
+  S.cCol='#ffffff'; S.cBg='#000000'; S.cBgOp=0;
+  resetEls();
+  // Reset UI inputs
+  document.getElementById('titIn').value='';
+  document.getElementById('catIn').value='';
+  document.getElementById('urlIn').value='';
+  // Reset sliders desktop
+  ['iDark','iBlur','imgX','imgY','tBgOp','cBgOp'].forEach(k=>{
+    const el=document.getElementById('r-'+k);
+    if(el){
+      const defaults={iDark:0,iBlur:0,imgX:0,imgY:0,tBgOp:80,cBgOp:0};
+      el.value=defaults[k]||0;
+      const rv=document.getElementById('rv-'+k);
+      if(rv&&RMAP[k])rv.textContent=RMAP[k].s(+(defaults[k]||0));
+    }
+  });
+  const ovTog=document.getElementById('ovTog');
+  if(ovTog)ovTog.checked=false;
+  render(); drawPreviews();
+  if(_panelOpen) renderMobPanel();
+  showToast('✅ Placa reiniciada');
 }
 
 async function exportImg(mode){
