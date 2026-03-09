@@ -982,18 +982,16 @@ function onMove(e){
       // h se recalcula en drawTitle/drawCat para contener las líneas
 
     } else if(isText){
-      // Esquinas: escala proporcional igual que logo (recuadro + texto juntos)
-      // sz escala con w, textW = w
-      const AR=rs.rect.w/rs.rect.h; // aspect ratio original
-      // sz de respaldo: usar el valor actual del elemento si el snapshot no lo tenía
+      // Esquinas: escalan w+h juntos (libre), sz escala proporcional a w
       const baseSz=rs.rect.sz || el.sz || Math.round(rs.rect.h*(S.active==='title'?.38:.58));
       const baseW=rs.rect.w;
-      if(corner==='se'){w=Math.max(MIN,w+dx);h=w/AR;}
-      else if(corner==='sw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;h=w/AR;}
-      else if(corner==='ne'){w=Math.max(MIN,w+dx);const nh=w/AR;y=rs.rect.y+rs.rect.h-nh;h=nh;}
-      else if(corner==='nw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;const nh=w/AR;y=rs.rect.y+rs.rect.h-nh;h=nh;}
+      const MINSZ=W*.018; // mínimo sz visible (~20px en 1080)
+      if(corner==='se'){w=Math.max(MIN,w+dx);h=Math.max(MIN,h+dy);}
+      else if(corner==='sw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;h=Math.max(MIN,h+dy);}
+      else if(corner==='ne'){w=Math.max(MIN,w+dx);const nh=Math.max(MIN,h-dy);y=rs.rect.y+rs.rect.h-nh;h=nh;}
+      else if(corner==='nw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;const nh=Math.max(MIN,h-dy);y=rs.rect.y+rs.rect.h-nh;h=nh;}
       el.x=x;el.y=y;el.w=w;el.h=h;
-      el.sz=Math.max(10, Math.round(baseSz*(w/baseW)));
+      el.sz=Math.max(MINSZ, Math.round(baseSz*(w/baseW)));
       el.textW=w;
 
     } else {
