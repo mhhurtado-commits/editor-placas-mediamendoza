@@ -27,7 +27,54 @@ let S={
   action:null,
   dragOff:{x:0,y:0},
   resizeStart:null,
+  tShadow:false,  // sombra título
+  cShadow:false,  // sombra categoría
 };
+
+// ── HISTORIAL DESHACER ──
+const HISTORY=[];
+const HISTORY_MAX=30;
+function snapShot(){
+  // Guardar copia profunda de S y ELS (sin bgImg ni logoImg para no duplicar memoria)
+  const snap={
+    S: JSON.parse(JSON.stringify({...S, bgImg:null, logoImg:null,
+        active:null, action:null, resizeStart:null})),
+    ELS: JSON.parse(JSON.stringify(ELS)),
+    bgImg: S.bgImg,
+    logoImg: S.logoImg,
+  };
+  HISTORY.push(snap);
+  if(HISTORY.length>HISTORY_MAX) HISTORY.shift();
+}
+function undo(){
+  if(HISTORY.length<2){showToast('Nada para deshacer');return;}
+  HISTORY.pop(); // descartar estado actual
+  const snap=HISTORY[HISTORY.length-1];
+  Object.assign(S, snap.S, {bgImg:snap.bgImg, logoImg:snap.logoImg, active:null, action:null});
+  ELS=JSON.parse(JSON.stringify(snap.ELS));
+  syncUIFromS();
+  render();drawPreviews();
+}
+function syncUIFromS(){
+  // Sincronizar inputs del sidebar con el estado S
+  const safe=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  const safeText=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  safe('titIn',S.title); safe('catIn',S.cat);
+  safe('fmtSel',S.fmt);
+  Object.keys(RMAP).forEach(k=>{
+    safe('r-'+k, Math.round(S[RMAP[k].k]*(k==='iBlur'?1:100)));
+    safeText('rv-'+k, RMAP[k].s(Math.round(S[RMAP[k].k]*(k==='iBlur'?1:100))));
+  });
+  const ovTog=document.getElementById('ovTog');
+  if(ovTog) ovTog.checked=S.ovActive;
+  ['tShadow','cShadow'].forEach(k=>{
+    const el=document.getElementById(k);if(el)el.checked=S[k];
+  });
+  // sync formato pills
+  document.querySelectorAll('[id^="fp-"]').forEach(el=>el.classList.remove('on'));
+  const fp=document.getElementById('fp-'+S.fmt);if(fp)fp.classList.add('on');
+  document.getElementById('fmtLbl').textContent=FMTS[S.fmt].lbl;
+}
 
 const canvas=document.getElementById('mc');
 const ctx=canvas.getContext('2d');
@@ -271,8 +318,15 @@ function drawCat(){
   const r=hexRgb(S.cBg);
   ctx.fillStyle=`rgba(${r.r},${r.g},${r.b},${S.cBgOp})`;
   roundRect(ctx,el.x,el.y,el.w,el.h,5);ctx.fill();
+  if(S.cShadow){
+    ctx.shadowColor='rgba(0,0,0,.85)';
+    ctx.shadowBlur=Math.round(sz*.18);
+    ctx.shadowOffsetX=Math.round(sz*.04);
+    ctx.shadowOffsetY=Math.round(sz*.04);
+  }
   ctx.fillStyle=S.cCol;ctx.textAlign='center';
   lines.forEach((l,i)=>ctx.fillText(l,cx,sy+i*lh));
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
   ctx.restore();
 }
 
@@ -302,8 +356,15 @@ function drawTitle(){
     ctx.fillStyle=`rgba(${r.r},${r.g},${r.b},${S.tBgOp})`;
     roundRect(ctx,el.x,el.y,el.w,el.h,6);ctx.fill();
   }
+  if(S.tShadow){
+    ctx.shadowColor='rgba(0,0,0,.85)';
+    ctx.shadowBlur=Math.round(sz*.18);
+    ctx.shadowOffsetX=Math.round(sz*.04);
+    ctx.shadowOffsetY=Math.round(sz*.04);
+  }
   ctx.fillStyle=S.tCol;ctx.textAlign='center';
   lines.forEach((l,i)=>ctx.fillText(l,cx,sy+i*lh));
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
   ctx.restore();
 }
 
@@ -465,7 +526,7 @@ function onMove(e){
   }
   render();
 }
-function onUp(){S.action=null;canvas.style.cursor=S.active?'grab':'default';}
+function onUp(){if(S.action&&S.action!==null)snapShot();S.action=null;canvas.style.cursor=S.active?'grab':'default';}
 function setFmt(f){
   S.fmt=f;resetEls();
   document.querySelectorAll('[id^="fp-"]').forEach(el=>el.classList.remove('on'));
@@ -496,7 +557,7 @@ function updR(key,el){
   const m=RMAP[key];if(!m)return;
   S[m.k]=m.fn(+el.value);
   document.getElementById('rv-'+key).textContent=m.s(+el.value);
-  render();
+  snapShot();render();
 }
 function setSw(inputId,val,el){
   document.getElementById(inputId).value=val==='transparent'?'#000000':val;
@@ -506,8 +567,11 @@ function setSw(inputId,val,el){
   el.classList.add('on');render();
 }
 ['titIn','catIn'].forEach(id=>{
+  let _snapTimer=null;
   document.getElementById(id).addEventListener('input',e=>{
     if(id==='titIn')S.title=e.target.value;else S.cat=e.target.value;render();
+    clearTimeout(_snapTimer);
+    _snapTimer=setTimeout(snapShot,800); // snapshot 800ms después de dejar de escribir
   });
 });
 
@@ -542,14 +606,14 @@ async function loadRemoteImg(imgUrl){
     const bu=URL.createObjectURL(blob);
     return new Promise(r=>{
       const img=new Image();
-      img.onload=()=>{S.bgImg=img;resetImgSliders();resizeCanvas(true);render();drawPreviews();setTimeout(()=>{resizeCanvas(true);render();},300);r();};
+      img.onload=()=>{S.bgImg=img;resetImgSliders();resizeCanvas(true);render();drawPreviews();snapShot();setTimeout(()=>{resizeCanvas(true);render();},300);r();};
       img.onerror=()=>{showToast('No se pudo cargar la imagen.');r();};
       img.src=bu;
     });
   }catch{
     return new Promise(r=>{
       const img=new Image();img.crossOrigin='anonymous';
-      img.onload=()=>{S.bgImg=img;resetImgSliders();resizeCanvas(true);render();drawPreviews();setTimeout(()=>{resizeCanvas(true);render();},300);r();};
+      img.onload=()=>{S.bgImg=img;resetImgSliders();resizeCanvas(true);render();drawPreviews();snapShot();setTimeout(()=>{resizeCanvas(true);render();},300);r();};
       img.onerror=()=>{showToast('Subí la imagen manualmente.');r();};
       img.src=imgUrl;
     });
@@ -607,8 +671,8 @@ function clearAll(){
   S.title=''; S.cat=''; S.bgImg=null;
   S.iDark=0; S.iBlur=0; S.imgX=0; S.imgY=0;
   S.ovActive=false; S.ovCol='#000000'; S.ovOp=0.5;
-  S.tCol='#ffffff'; S.tBg='#000000'; S.tBgOp=0.8;
-  S.cCol='#ffffff'; S.cBg='#000000'; S.cBgOp=0;
+  S.tCol='#ffffff'; S.tBg='#000000'; S.tBgOp=0.8; S.tShadow=false;
+  S.cCol='#ffffff'; S.cBg='#000000'; S.cBgOp=0; S.cShadow=false;
   resetEls();
   // Reset UI inputs
   document.getElementById('titIn').value='';
@@ -663,6 +727,32 @@ async function exportImg(mode){
       showToast('Abrí en nueva pestaña → clic derecho → Copiar imagen');
     }
   }
+}
+
+async function exportAllFormats(){
+  if(!S.bgImg){showToast('Primero cargá una imagen');return;}
+  const fmts=Object.keys(FMTS);
+  const origFmt=S.fmt;
+  const origELS=JSON.parse(JSON.stringify(ELS));
+  showLoading(true);
+  showToast('Generando '+fmts.length+' formatos...');
+  for(const f of fmts){
+    S.fmt=f; resetEls(); resizeCanvas();
+    await new Promise(r=>setTimeout(r,100));
+    render();
+    await new Promise(r=>setTimeout(r,80));
+    const blob=await renderClean();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`mediamendoza-${f}-${Date.now()}.jpg`;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+    await new Promise(r=>setTimeout(r,400));
+  }
+  S.fmt=origFmt; ELS=origELS; resizeCanvas(true); render();
+  showLoading(false);
+  showToast('✅ '+fmts.length+' formatos descargados');
 }
 
 function showLoading(v){document.getElementById('lov').style.display=v?'flex':'none';}
@@ -721,7 +811,11 @@ const MOB_PANELS = {
       ${['#000000','#a6ce39','#8fb82d','transparent'].map(c=>`<div class="sw ${S.tBg===c?'on':''} ${c==='transparent'?'sw-transp':''}" style="${c!=='transparent'?'background:'+c:''}" onclick="S.tBg='${c}';render();renderMobPanel()" title="${c==='transparent'?'Sin fondo':''}"></div>`).join('')}
     </div>
     <label class="fl">Opacidad del fondo <span class="rval" id="m-rv-tBgOp">${Math.round(S.tBgOp*100)}%</span></label>
-    <div class="rrow"><input type="range" min="0" max="100" value="${Math.round(S.tBgOp*100)}" oninput="S.tBgOp=this.value/100;document.getElementById('m-rv-tBgOp').textContent=this.value+'%';syncSlider('tBgOp',this.value);render()"></div>`,
+    <div class="rrow"><input type="range" min="0" max="100" value="${Math.round(S.tBgOp*100)}" oninput="S.tBgOp=this.value/100;document.getElementById('m-rv-tBgOp').textContent=this.value+'%';syncSlider('tBgOp',this.value);render()"></div>
+    <div class="togrow" style="margin-top:8px">
+      <span style="font-size:.8rem;color:var(--g80)">Sombra en texto</span>
+      <label class="toggle"><input type="checkbox" id="m-tShadow" ${S.tShadow?'checked':''} onchange="S.tShadow=this.checked;const d=document.getElementById('tShadow');if(d)d.checked=this.checked;snapShot();render()"><span class="togslide"></span></label>
+    </div>`,
 
   categoria: ()=>`
     <label class="fl" style="margin-top:4px">Color de texto</label>
@@ -735,7 +829,11 @@ const MOB_PANELS = {
       ${['#a6ce39','#8fb82d','#ffffff','#111111'].map(c=>`<div class="sw ${S.cBg===c?'on':''}" style="background:${c};${c==='#ffffff'?'border-color:#ccc':''}" onclick="S.cBg='${c}';render();renderMobPanel()"></div>`).join('')}
     </div>
     <label class="fl">Opacidad del fondo <span class="rval" id="m-rv-cBgOp">${Math.round(S.cBgOp*100)}%</span></label>
-    <div class="rrow"><input type="range" min="0" max="100" value="${Math.round(S.cBgOp*100)}" oninput="S.cBgOp=this.value/100;document.getElementById('m-rv-cBgOp').textContent=this.value+'%';syncSlider('cBgOp',this.value);render()"></div>`,
+    <div class="rrow"><input type="range" min="0" max="100" value="${Math.round(S.cBgOp*100)}" oninput="S.cBgOp=this.value/100;document.getElementById('m-rv-cBgOp').textContent=this.value+'%';syncSlider('cBgOp',this.value);render()"></div>
+    <div class="togrow" style="margin-top:8px">
+      <span style="font-size:.8rem;color:var(--g80)">Sombra en texto</span>
+      <label class="toggle"><input type="checkbox" id="m-cShadow" ${S.cShadow?'checked':''} onchange="S.cShadow=this.checked;const d=document.getElementById('cShadow');if(d)d.checked=this.checked;snapShot();render()"><span class="togslide"></span></label>
+    </div>`,
 
   capa: ()=>`
     <div class="togrow" style="margin-top:4px">
@@ -862,4 +960,7 @@ function init(){
   setTimeout(doFirstRender, 200);
 }
 window.addEventListener('resize',()=>{resizeCanvas(true);render();});
+window.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
+});
 window.addEventListener('load',init);
