@@ -55,10 +55,12 @@ function resizeCanvas(keepEls){
   const isMobile=window.innerWidth<=700;
   let avW,avH;
   if(isMobile){
-    // En mobile canvas-area es position:fixed — getBoundingClientRect es confiable
-    const r=area.getBoundingClientRect();
-    avW=r.width>10 ? r.width-16 : window.innerWidth-16;
-    avH=r.height>10 ? r.height-16 : window.innerHeight-120;
+    // iOS Safari no reporta bien getBoundingClientRect en position:fixed
+    // Calcular directo desde window menos alturas conocidas de los elementos fijos
+    const TB=52, EB=58, TABS=48;
+    const panelH=(typeof _panelOpen!=='undefined'&&_panelOpen) ? Math.round(window.innerHeight*0.32) : 0;
+    avW=window.innerWidth-16;
+    avH=window.innerHeight-TB-EB-TABS-panelH-16;
   } else {
     avW=area.clientWidth-32;
     avH=area.clientHeight-32;
@@ -818,7 +820,8 @@ function init(){
   img.src='data:image/png;base64,'+LOGO_B64;
   document.getElementById('hLogo').src='data:image/png;base64,'+LOGO_B64;
   // Esperar un frame para que el DOM mobile tenga dimensiones correctas
-  requestAnimationFrame(()=>{ resizeCanvas();render();drawPreviews(); });
+  // Doble rAF: iOS Safari necesita dos frames para tener dimensiones correctas
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ resizeCanvas();render();drawPreviews(); }));
   // Desktop: abrir primer acordeón
   if(window.innerWidth>700){
     const firstHead=document.querySelector('.acc-head');
