@@ -123,6 +123,10 @@
         </div>
         <label class="fl">Opacidad del fondo <span class="rval" id="rv-tBgOp">80%</span></label>
         <div class="rrow"><input type="range" id="r-tBgOp" min="0" max="100" value="80" oninput="updR('tBgOp',this)"></div>
+        <div class="togrow" style="margin-top:8px">
+          <span style="font-size:.8rem;color:var(--g80)">Sombra en texto</span>
+          <label class="toggle"><input type="checkbox" id="tShadow" onchange="S.tShadow=this.checked;snapShot();render()"><span class="togslide"></span></label>
+        </div>
       </div>
     </div>
 
@@ -150,6 +154,10 @@
         </div>
         <label class="fl">Opacidad del fondo <span class="rval" id="rv-cBgOp">0%</span></label>
         <div class="rrow"><input type="range" id="r-cBgOp" min="0" max="100" value="0" oninput="updR('cBgOp',this)"></div>
+        <div class="togrow" style="margin-top:8px">
+          <span style="font-size:.8rem;color:var(--g80)">Sombra en texto</span>
+          <label class="toggle"><input type="checkbox" id="cShadow" onchange="S.cShadow=this.checked;snapShot();render()"><span class="togslide"></span></label>
+        </div>
       </div>
     </div>
 
@@ -224,6 +232,7 @@
   <span class="exp-lbl" id="fmtLbl">Instagram Cuadrado — 1080×1080</span>
   <button class="btn btn-clr" onclick="clearAll()">🗑 Limpiar</button>
   <button class="btn btn-o" onclick="exportImg('copy')">📋 Copiar</button>
+  <button class="btn btn-o" onclick="exportAllFormats()" title="Descargar todos los formatos">⬇ Todos</button>
   <button class="btn btn-g" onclick="exportImg('download')">⬇ Descargar</button>
 </footer>
 
