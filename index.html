@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Editor de Placas — Media Mendoza</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .align-bar{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 2px;}
+    .align-bar button{flex:1;min-width:28px;padding:4px 2px;font-size:.75rem;background:var(--g10);border:1px solid var(--g20);border-radius:4px;cursor:pointer;color:var(--g80);}
+    .align-bar button:hover{background:var(--green-cl);border-color:var(--green);}
+    .el-actions{display:flex;gap:6px;margin:8px 0 2px;align-items:center;}
+    .el-actions span{font-size:.75rem;color:var(--g60);flex:1;}
+    .btn-reset{padding:3px 8px;font-size:.75rem;background:none;border:1px solid var(--g30);border-radius:4px;cursor:pointer;color:var(--g70);}
+    .btn-reset:hover{border-color:var(--green);color:var(--green);}
+  </style>
 </head>
 <body>
 
@@ -105,6 +114,18 @@
         <span class="acc-icon">▼</span>
       </div>
       <div class="acc-body">
+        <div class="el-actions">
+          <span>Posición del título</span>
+          <button class="btn-reset" onclick="resetElPos('title')" title="Restablecer posición">↺ Reset</button>
+        </div>
+        <div class="align-bar">
+          <button onclick="alignEl('title','l')"  title="Izquierda">⇤</button>
+          <button onclick="alignEl('title','ch')" title="Centrar horizontal">↔</button>
+          <button onclick="alignEl('title','r')"  title="Derecha">⇥</button>
+          <button onclick="alignEl('title','t')"  title="Arriba">⇡</button>
+          <button onclick="alignEl('title','cv')" title="Centrar vertical">↕</button>
+          <button onclick="alignEl('title','b')"  title="Abajo">⇣</button>
+        </div>
         <label class="fl" style="margin-top:4px">Color de texto</label>
         <div class="swatches">
           <input type="color" id="tCol" value="#ffffff" oninput="S.tCol=this.value;render()">
@@ -137,6 +158,18 @@
         <span class="acc-icon">▼</span>
       </div>
       <div class="acc-body">
+        <div class="el-actions">
+          <span>Posición de la categoría</span>
+          <button class="btn-reset" onclick="resetElPos('cat')" title="Restablecer posición">↺ Reset</button>
+        </div>
+        <div class="align-bar">
+          <button onclick="alignEl('cat','l')"  title="Izquierda">⇤</button>
+          <button onclick="alignEl('cat','ch')" title="Centrar horizontal">↔</button>
+          <button onclick="alignEl('cat','r')"  title="Derecha">⇥</button>
+          <button onclick="alignEl('cat','t')"  title="Arriba">⇡</button>
+          <button onclick="alignEl('cat','cv')" title="Centrar vertical">↕</button>
+          <button onclick="alignEl('cat','b')"  title="Abajo">⇣</button>
+        </div>
         <label class="fl" style="margin-top:4px">Color de texto</label>
         <div class="swatches">
           <input type="color" id="cCol" value="#111111" oninput="S.cCol=this.value;render()">
@@ -192,6 +225,18 @@
         <span class="acc-icon">▼</span>
       </div>
       <div class="acc-body">
+        <div class="el-actions">
+          <span>Posición del logo</span>
+          <button class="btn-reset" onclick="resetElPos('logo')" title="Restablecer posición">↺ Reset</button>
+        </div>
+        <div class="align-bar">
+          <button onclick="alignEl('logo','l')"  title="Izquierda">⇤</button>
+          <button onclick="alignEl('logo','ch')" title="Centrar horizontal">↔</button>
+          <button onclick="alignEl('logo','r')"  title="Derecha">⇥</button>
+          <button onclick="alignEl('logo','t')"  title="Arriba">⇡</button>
+          <button onclick="alignEl('logo','cv')" title="Centrar vertical">↕</button>
+          <button onclick="alignEl('logo','b')"  title="Abajo">⇣</button>
+        </div>
         <label class="uplbl" for="logoUp">📁 Cambiar logo</label>
         <input type="file" id="logoUp" accept="image/*" onchange="loadLogo(event)">
         <label class="fl">Opacidad <span class="rval" id="rv-lOp">100%</span></label>
