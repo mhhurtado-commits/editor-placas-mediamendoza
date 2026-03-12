@@ -152,8 +152,8 @@ function defaultPos(key){
     return{x:pad,y:Math.round(H*.46),w,h};
   }
   if(key==='logo'){
-    if(!S.logoImg)return{x:pad,y:pad,w:Math.round(W*.26),h:Math.round(W*.09)};
-    const lw=Math.round(W*.26); // tamaño grande
+    if(!S.logoImg)return{x:pad,y:pad,w:Math.round(W*.312),h:Math.round(W*.108)};
+    const lw=Math.round(W*.312); // W*.26 * 1.2
     const lh=Math.round(lw*(S.logoImg.height/S.logoImg.width));
     if(S.tpl==='normal')return{x:Math.round((W-lw)/2),y:H-lh-pad,w:lw,h:lh};
     return{x:W-lw-pad,y:pad,w:lw,h:lh};
