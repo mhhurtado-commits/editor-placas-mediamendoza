@@ -334,10 +334,15 @@ function drawCat(){
   }
   ctx.textBaseline='top';
   const sy=el.y+(el.h-bh)/2;
-  const cx=el.x+el.w/2;
+  // Medir ancho real del texto para ajustar el recuadro
+  const textPad=Math.round(sz*.55);
+  const maxLineW=Math.max(...lines.map(l=>ctx.measureText(l).width));
+  const boxW=Math.min(maxLineW+textPad*2, el.w); // nunca superar el ancho del elemento
+  const boxX=el.x+(el.w-boxW)/2; // centrado dentro del elemento
+  const cx=boxX+boxW/2;
   const r=hexRgb(S.cBg);
   ctx.fillStyle=`rgba(${r.r},${r.g},${r.b},${S.cBgOp})`;
-  roundRect(ctx,el.x,el.y,el.w,el.h,5);ctx.fill();
+  roundRect(ctx,boxX,el.y,boxW,el.h,5);ctx.fill();
   if(S.cShadow){
     ctx.shadowColor='rgba(0,0,0,.85)';
     ctx.shadowBlur=Math.round(sz*.18);
