@@ -40,8 +40,8 @@ let S={
   fotoX:0.72, fotoY:0.18, // posición centro (fracción)
   fotoBorder:'#a6ce39',
   // ── modo collage ──
-  collageImgs:[null,null], // [img1, img2]
-  collageSplit:0.5,        // fracción horizontal del corte
+  collageImgs:[null,null,null,null], // hasta 4 imágenes
+  collageLayout:'2h',  // layouts: 2h, 2v, 3t, 3b, 3l, 3r, 4
 };
 
 // ── HISTORIAL DESHACER ──
@@ -262,35 +262,70 @@ function setMode(m){
   render();
 }
 function setQS(el){
-  // Cambiar estilo de cita
   document.querySelectorAll('[id^="qs-"]').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
+  snapShot();render();
+}
+function setCL(el){
+  document.querySelectorAll('[id^="cl-"]').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  // mostrar/ocultar slots según cuántas imágenes necesita el layout
+  const needs4=S.collageLayout==='4';
+  const needs3=S.collageLayout.startsWith('3')||needs4;
+  const s2=document.getElementById('coll-slot-2');
+  const s3=document.getElementById('coll-slot-3');
+  if(s2)s2.style.display=needs3?'':'none';
+  if(s3)s3.style.display=needs4?'':'none';
   snapShot();render();
 }
 
 // ── RENDER TEXTUAL ──
 function renderTextual(W,H){
   const style=S.quoteStyle;
-  // Fondo
-  if(style==='verde'){
-    ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,H);
-    // Patron sutil de líneas diagonales
-    ctx.save();ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=W*.018;
-    for(let i=-H;i<W+H;i+=Math.round(W*.07)){
-      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
+  const pad=Math.round(W*.05);
+
+  // ── FONDO ──
+  if(S.bgImg){
+    // Imagen de fondo con oscurecimiento
+    const img=S.bgImg,ir=img.width/img.height,cr=W/H;
+    let sx,sy,sw,sh;
+    if(ir>cr){sh=img.height;sw=sh*cr;sx=(img.width-sw)/2;sy=0;}
+    else{sw=img.width;sh=sw/cr;sx=0;sy=(img.height-sh)/2;}
+    ctx.drawImage(img,sx,sy,sw,sh,0,0,W,H);
+    // Overlay según estilo
+    if(style==='verde'){
+      ctx.fillStyle='rgba(166,206,57,.82)';ctx.fillRect(0,0,W,H);
+    } else if(style==='negro'){
+      ctx.fillStyle='rgba(10,10,10,.88)';ctx.fillRect(0,0,W,H);
+    } else {
+      ctx.fillStyle='rgba(245,249,232,.90)';ctx.fillRect(0,0,W,H);
     }
-    ctx.restore();
-  } else if(style==='negro'){
-    ctx.fillStyle='#111111';ctx.fillRect(0,0,W,H);
+  } else {
+    // Sin imagen — fondo sólido
+    if(style==='verde'){
+      ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,H);
+      ctx.save();ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=W*.018;
+      for(let i=-H;i<W+H;i+=Math.round(W*.07)){
+        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
+      }
+      ctx.restore();
+    } else if(style==='negro'){
+      ctx.fillStyle='#111111';ctx.fillRect(0,0,W,H);
+    } else {
+      ctx.fillStyle='#f5f9e8';ctx.fillRect(0,0,W,H);
+    }
+  }
+
+  // ── DETALLES ESTRUCTURALES ──
+  if(style==='negro'){
     ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,Math.round(H*.008));
     ctx.fillStyle='#a6ce39';ctx.fillRect(0,H-Math.round(H*.008),W,Math.round(H*.008));
-  } else { // blanco
-    ctx.fillStyle='#f5f9e8';ctx.fillRect(0,0,W,H);
+  } else if(style==='blanco'){
     ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,Math.round(W*.012),H);
-    ctx.fillStyle='#111111';ctx.fillRect(Math.round(W*.012),0,Math.round(W*.003),H);
+    ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(Math.round(W*.012),0,Math.round(W*.003),H);
   }
-  // Logo
-  const pad=Math.round(W*.05);
+
+  // ── LOGO ──
   if(S.logoImg){
     const lw=Math.round(W*.22);
     const lh=Math.round(lw*(S.logoImg.height/S.logoImg.width));
@@ -301,20 +336,23 @@ function renderTextual(W,H){
     ctx.drawImage(S.logoImg,pad,pad,lw,lh);
     ctx.filter='none';ctx.restore();
   }
+
   if(!S.quote)return;
   const isVerde=style==='verde';
   const isBlanco=style==='blanco';
-  const textCol=isVerde?'#111111':isBlanco?'#111111':'#ffffff';
-  const accentCol=isVerde?'rgba(0,0,0,.18)':'#a6ce39';
-  // Comillas tipográficas grandes
+  const textCol=isVerde||isBlanco?'#111111':'#ffffff';
+  const accentCol=isVerde?'rgba(0,0,0,.25)':'#a6ce39';
+
+  // ── COMILLAS ──
   const qsz=Math.round(W*.22);
   ctx.save();
   ctx.font=`900 ${qsz}px 'BebasNeue',sans-serif`;
-  ctx.fillStyle=isVerde?'rgba(0,0,0,.12)':'rgba(166,206,57,.25)';
+  ctx.fillStyle=isVerde||isBlanco?'rgba(0,0,0,.1)':'rgba(166,206,57,.22)';
   ctx.textBaseline='top';
-  ctx.fillText('"',Math.round(W*.04),Math.round(H*.12));
+  ctx.fillText('"',Math.round(W*.04),Math.round(H*.1));
   ctx.restore();
-  // Texto de la cita
+
+  // ── TEXTO DE LA CITA ──
   const aw=Math.round(W*.82);
   const qpad=Math.round(W*.09);
   let sz=Math.max(16,Math.round(W*.065));
@@ -326,14 +364,15 @@ function renderTextual(W,H){
     if(bh<=H*.52||sz<=16)break;
     sz=Math.max(16,Math.round(sz*.88));
   }
-  const qy=Math.round(H*.28);
+  const qy=Math.round(H*.27);
   ctx.save();
   ctx.textBaseline='top';ctx.textAlign='left';
   ctx.fillStyle=textCol;
   ctx.font=`400 ${sz}px 'BebasNeue',sans-serif`;
   lines.forEach((l,i)=>ctx.fillText(l,qpad,qy+i*lh));
   ctx.restore();
-  // Línea separadora + autor
+
+  // ── AUTOR ──
   if(S.quoteAuthor){
     const lineY=qy+bh+Math.round(H*.04);
     ctx.save();
@@ -341,7 +380,7 @@ function renderTextual(W,H){
     ctx.beginPath();ctx.moveTo(qpad,lineY);ctx.lineTo(qpad+Math.round(W*.12),lineY);ctx.stroke();
     const asz=Math.round(W*.032);
     ctx.font=`700 ${asz}px 'Economica',sans-serif`;
-    ctx.fillStyle=isVerde?'rgba(0,0,0,.7)':isBlanco?'rgba(0,0,0,.6)':'rgba(255,255,255,.7)';
+    ctx.fillStyle=isVerde||isBlanco?'rgba(0,0,0,.65)':'rgba(255,255,255,.7)';
     ctx.textBaseline='top';
     ctx.fillText('— '+S.quoteAuthor.toUpperCase(),qpad,lineY+Math.round(H*.025));
     ctx.restore();
@@ -350,7 +389,7 @@ function renderTextual(W,H){
 
 // ── RENDER FOTO CÍRCULO ──
 function renderFoto(W,H){
-  // Render normal de fondo + plantilla
+  // ── FONDO: imagen de la noticia (bgImg) ──
   if(S.bgImg){
     ctx.save();
     if(S.iBlur>0)ctx.filter=`blur(${S.iBlur}px)`;
@@ -364,78 +403,157 @@ function renderFoto(W,H){
     if(S.iDark>0){ctx.save();ctx.globalAlpha=S.iDark;ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.restore();}
   } else {
     ctx.fillStyle='#dedad3';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#999';ctx.font=`${Math.round(W*.022)}px Montserrat,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('Cargá la imagen de la noticia',W/2,H/2);ctx.textAlign='left';
   }
+  // ── PLANTILLA ──
   (TPLS[S.tpl]||TPLS.normal)(W,H);
-  // Elementos normales
+  // ── ELEMENTOS NORMALES ──
   if(ELS.title.x===null)ensurePos('title');
   if(ELS.cat.x===null)ensurePos('cat');
   if(ELS.logo.x===null)ensurePos('logo');
   drawLogo();drawCat();drawTitle();
-  // Foto círculo
-  if(!S.fotoImg)return;
+  // ── FOTO CÍRCULO (segunda imagen — la persona) ──
+  if(!S.fotoImg){
+    // Indicador visual de que falta cargar la foto
+    const R=Math.round(W*S.fotoSize/2);
+    const cx=Math.round(W*S.fotoX),cy=Math.round(H*S.fotoY);
+    ctx.save();
+    ctx.strokeStyle='rgba(166,206,57,.7)';ctx.lineWidth=Math.round(R*.06);
+    ctx.setLineDash([Math.round(R*.15),Math.round(R*.1)]);
+    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(166,206,57,.5)';
+    ctx.font=`${Math.round(R*.32)}px Montserrat,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('+ foto',cx,cy);ctx.textAlign='left';
+    ctx.restore();
+    return;
+  }
   const R=Math.round(W*S.fotoSize/2);
   const cx=Math.round(W*S.fotoX);
   const cy=Math.round(H*S.fotoY);
   ctx.save();
   // Sombra del círculo
-  ctx.shadowColor='rgba(0,0,0,.4)';ctx.shadowBlur=Math.round(R*.18);
-  // Borde
-  ctx.beginPath();ctx.arc(cx,cy,R+Math.round(R*.06),0,Math.PI*2);
+  ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=Math.round(R*.22);ctx.shadowOffsetY=Math.round(R*.06);
+  // Borde exterior
+  ctx.beginPath();ctx.arc(cx,cy,R+Math.round(R*.07),0,Math.PI*2);
   ctx.fillStyle=S.fotoBorder;ctx.fill();
-  ctx.shadowColor='transparent';ctx.shadowBlur=0;
-  // Clip circular y dibujar imagen
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+  // Clip y dibujar foto persona
   ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
-  const fi=S.fotoImg,fr=fi.width/fi.height;
-  const fd=R*2;
-  let fsx,fsy,fsw,fsh;
-  if(fr>1){fsh=fi.height;fsw=fsh;fsx=(fi.width-fsw)/2;fsy=0;}
-  else{fsw=fi.width;fsh=fsw;fsx=0;fsy=(fi.height-fsh)/2;}
-  ctx.drawImage(fi,fsx,fsy,fsw,fsh,cx-R,cy-R,fd,fd);
+  const fi=S.fotoImg;
+  const side=Math.min(fi.width,fi.height);
+  const fsx=(fi.width-side)/2,fsy=(fi.height-side)/2;
+  ctx.drawImage(fi,fsx,fsy,side,side,cx-R,cy-R,R*2,R*2);
   ctx.restore();
 }
 
 // ── RENDER COLLAGE ──
+// Helper: dibujar imagen en un rect recortado
+function drawImgInRect(img,rx,ry,rw,rh,idx){
+  ctx.save();
+  ctx.beginPath();ctx.rect(rx,ry,rw,rh);ctx.clip();
+  if(img){
+    const ir=img.width/img.height,cr=rw/rh;
+    let sx,sy,sw,sh;
+    if(ir>cr){sh=img.height;sw=sh*cr;sx=(img.width-sw)/2;sy=0;}
+    else{sw=img.width;sh=sw/cr;sx=0;sy=(img.height-sh)/2;}
+    ctx.drawImage(img,sx,sy,sw,sh,rx,ry,rw,rh);
+  } else {
+    const colors=['#222','#1a1a1a','#252525','#1e1e1e'];
+    ctx.fillStyle=colors[idx%4];ctx.fillRect(rx,ry,rw,rh);
+    ctx.fillStyle='rgba(166,206,57,.4)';
+    ctx.font=`${Math.round(Math.min(rw,rh)*.18)}px Montserrat,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(`${idx+1}`,rx+rw/2,ry+rh/2);ctx.textAlign='left';
+  }
+  ctx.restore();
+}
+// Helper: dibujar divisores verdes entre celdas
+function drawCollageDividers(lines){
+  const dw=3;
+  lines.forEach(([x1,y1,x2,y2])=>{
+    ctx.fillStyle='#111';
+    if(x1===x2){ctx.fillRect(x1-2,y1,4,y2-y1);}
+    else{ctx.fillRect(x1,y1-2,x2-x1,4);}
+    ctx.fillStyle='#a6ce39';
+    if(x1===x2){ctx.fillRect(x1-1,y1,dw,y2-y1);}
+    else{ctx.fillRect(x1,y1-1,x2-x1,dw);}
+  });
+}
+
 function renderCollage(W,H){
-  const split=Math.round(W*S.collageSplit);
-  // Panel izquierdo
-  if(S.collageImgs[0]){
-    ctx.save();ctx.beginPath();ctx.rect(0,0,split,H);ctx.clip();
-    const i=S.collageImgs[0],ir=i.width/i.height,cr=split/H;
-    let sx,sy,sw,sh;
-    if(ir>cr){sh=i.height;sw=sh*cr;sx=(i.width-sw)/2;sy=0;}
-    else{sw=i.width;sh=sw/cr;sx=0;sy=(i.height-sh)/2;}
-    ctx.drawImage(i,sx,sy,sw,sh,0,0,split,H);
-    ctx.restore();
-  } else {
-    ctx.fillStyle='#2a2a2a';ctx.fillRect(0,0,split,H);
-    ctx.fillStyle='#444';ctx.font=`${Math.round(W*.025)}px Montserrat,sans-serif`;
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('Imagen 1',split/2,H/2);ctx.textAlign='left';
+  const imgs=S.collageImgs;
+  const L=S.collageLayout;
+  const gap=Math.round(W*.008);
+
+  // ── LAYOUTS ──
+  if(L==='2h'){
+    // Dos horizontales (izq/der)
+    const mid=Math.round(W/2);
+    drawImgInRect(imgs[0],0,0,mid-gap/2,H,0);
+    drawImgInRect(imgs[1],mid+gap/2,0,W-mid-gap/2,H,1);
+    drawCollageDividers([[mid,0,mid,H]]);
   }
-  // Panel derecho
-  if(S.collageImgs[1]){
-    ctx.save();ctx.beginPath();ctx.rect(split,0,W-split,H);ctx.clip();
-    const i=S.collageImgs[1],rw=W-split,ir=i.width/i.height,cr=rw/H;
-    let sx,sy,sw,sh;
-    if(ir>cr){sh=i.height;sw=sh*cr;sx=(i.width-sw)/2;sy=0;}
-    else{sw=i.width;sh=sw/cr;sx=0;sy=(i.height-sh)/2;}
-    ctx.drawImage(i,sx,sy,sw,sh,split,0,rw,H);
-    ctx.restore();
-  } else {
-    ctx.fillStyle='#1a1a1a';ctx.fillRect(split,0,W-split,H);
-    ctx.fillStyle='#444';ctx.font=`${Math.round(W*.025)}px Montserrat,sans-serif`;
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('Imagen 2',split+(W-split)/2,H/2);ctx.textAlign='left';
+  else if(L==='2v'){
+    // Dos verticales (arriba/abajo)
+    const mid=Math.round(H/2);
+    drawImgInRect(imgs[0],0,0,W,mid-gap/2,0);
+    drawImgInRect(imgs[1],0,mid+gap/2,W,H-mid-gap/2,1);
+    drawCollageDividers([[0,mid,W,mid]]);
   }
-  // Divisor central
-  const dw=Math.round(W*.012);
-  ctx.fillStyle='#111';ctx.fillRect(split-dw/2,0,dw,H);
-  ctx.fillStyle='#a6ce39';ctx.fillRect(split-Math.round(dw*.25),0,Math.round(dw*.25),H);
-  // Overlay degradado inferior para texto
-  const g=ctx.createLinearGradient(0,H*.55,0,H);
-  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
+  else if(L==='3t'){
+    // Una grande arriba, dos chicas abajo
+    const splitH=Math.round(H*.55);
+    const midW=Math.round(W/2);
+    drawImgInRect(imgs[0],0,0,W,splitH-gap/2,0);
+    drawImgInRect(imgs[1],0,splitH+gap/2,midW-gap/2,H-splitH-gap/2,1);
+    drawImgInRect(imgs[2],midW+gap/2,splitH+gap/2,W-midW-gap/2,H-splitH-gap/2,2);
+    drawCollageDividers([[0,splitH,W,splitH],[midW,splitH,midW,H]]);
+  }
+  else if(L==='3b'){
+    // Dos chicas arriba, una grande abajo
+    const splitH=Math.round(H*.45);
+    const midW=Math.round(W/2);
+    drawImgInRect(imgs[0],0,0,midW-gap/2,splitH-gap/2,0);
+    drawImgInRect(imgs[1],midW+gap/2,0,W-midW-gap/2,splitH-gap/2,1);
+    drawImgInRect(imgs[2],0,splitH+gap/2,W,H-splitH-gap/2,2);
+    drawCollageDividers([[0,splitH,W,splitH],[midW,0,midW,splitH]]);
+  }
+  else if(L==='3l'){
+    // Una grande izquierda, dos chicas derecha
+    const splitW=Math.round(W*.55);
+    const midH=Math.round(H/2);
+    drawImgInRect(imgs[0],0,0,splitW-gap/2,H,0);
+    drawImgInRect(imgs[1],splitW+gap/2,0,W-splitW-gap/2,midH-gap/2,1);
+    drawImgInRect(imgs[2],splitW+gap/2,midH+gap/2,W-splitW-gap/2,H-midH-gap/2,2);
+    drawCollageDividers([[splitW,0,splitW,H],[splitW,midH,W,midH]]);
+  }
+  else if(L==='3r'){
+    // Dos chicas izquierda, una grande derecha
+    const splitW=Math.round(W*.45);
+    const midH=Math.round(H/2);
+    drawImgInRect(imgs[0],0,0,splitW-gap/2,midH-gap/2,0);
+    drawImgInRect(imgs[1],0,midH+gap/2,splitW-gap/2,H-midH-gap/2,1);
+    drawImgInRect(imgs[2],splitW+gap/2,0,W-splitW-gap/2,H,2);
+    drawCollageDividers([[splitW,0,splitW,H],[0,midH,splitW,midH]]);
+  }
+  else if(L==='4'){
+    // Cuatro iguales
+    const mw=Math.round(W/2),mh=Math.round(H/2);
+    drawImgInRect(imgs[0],0,0,mw-gap/2,mh-gap/2,0);
+    drawImgInRect(imgs[1],mw+gap/2,0,W-mw-gap/2,mh-gap/2,1);
+    drawImgInRect(imgs[2],0,mh+gap/2,mw-gap/2,H-mh-gap/2,2);
+    drawImgInRect(imgs[3],mw+gap/2,mh+gap/2,W-mw-gap/2,H-mh-gap/2,3);
+    drawCollageDividers([[mw,0,mw,H],[0,mh,W,mh]]);
+  }
+
+  // ── OVERLAY DEGRADADO + TEXTO ──
+  const g=ctx.createLinearGradient(0,H*.5,0,H);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.85)');
   ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  // Logo + texto
   if(ELS.logo.x===null)ensurePos('logo');
   if(ELS.title.x===null)ensurePos('title');
   if(ELS.cat.x===null)ensurePos('cat');
@@ -1117,7 +1235,9 @@ const MOB_PANELS = {
       </div>
     `:''}
     ${S.mode==='foto'?`
-      <label class="uplbl" for="m-fotoUp">📁 Foto de persona</label>
+      <label class="uplbl" for="m-bgUp2">📁 Imagen de fondo (noticia)</label>
+      <input type="file" id="m-bgUp2" accept="image/*">
+      <label class="uplbl" for="m-fotoUp" style="margin-top:6px">📁 Foto persona (círculo)</label>
       <input type="file" id="m-fotoUp" accept="image/*">
       <label class="fl" style="margin-top:6px">Tamaño <span class="rval" id="m-rv-fotoSize">${Math.round(S.fotoSize*100)}%</span></label>
       <div class="rrow"><input type="range" min="10" max="55" value="${Math.round(S.fotoSize*100)}"
@@ -1130,15 +1250,21 @@ const MOB_PANELS = {
         oninput="S.fotoY=this.value/100;document.getElementById('m-rv-fotoY').textContent=this.value+'%';render()"></div>
     `:''}
     ${S.mode==='collage'?`
-      <div class="collage-slots">
-        <label class="collage-slot" for="m-coll0"><div>🖼</div><div>Imagen 1</div>
-          <input type="file" id="m-coll0" accept="image/*" style="display:none"></label>
-        <label class="collage-slot" for="m-coll1"><div>🖼</div><div>Imagen 2</div>
-          <input type="file" id="m-coll1" accept="image/*" style="display:none"></label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 0 10px">
+        <div class="tpl-btn ${S.collageLayout==='2h'?'on':''}" onclick="S.collageLayout='2h';render();renderMobPanel()" style="padding:5px 2px;font-size:.68rem">⬜⬜</div>
+        <div class="tpl-btn ${S.collageLayout==='2v'?'on':''}" onclick="S.collageLayout='2v';render();renderMobPanel()" style="padding:5px 2px;font-size:.68rem">🔲</div>
+        <div class="tpl-btn ${S.collageLayout==='3t'?'on':''}" onclick="S.collageLayout='3t';render();renderMobPanel()" style="padding:5px 2px;font-size:.62rem">1↑2↓</div>
+        <div class="tpl-btn ${S.collageLayout==='3b'?'on':''}" onclick="S.collageLayout='3b';render();renderMobPanel()" style="padding:5px 2px;font-size:.62rem">2↑1↓</div>
+        <div class="tpl-btn ${S.collageLayout==='3l'?'on':''}" onclick="S.collageLayout='3l';render();renderMobPanel()" style="padding:5px 2px;font-size:.62rem">1←2→</div>
+        <div class="tpl-btn ${S.collageLayout==='3r'?'on':''}" onclick="S.collageLayout='3r';render();renderMobPanel()" style="padding:5px 2px;font-size:.62rem">2←1→</div>
+        <div class="tpl-btn ${S.collageLayout==='4' ?'on':''}" onclick="S.collageLayout='4'; render();renderMobPanel()" style="padding:5px 2px;font-size:.68rem">⊞</div>
       </div>
-      <label class="fl">División <span class="rval" id="m-rv-collageSplit">${Math.round(S.collageSplit*100)}%</span></label>
-      <div class="rrow"><input type="range" min="20" max="80" value="${Math.round(S.collageSplit*100)}"
-        oninput="S.collageSplit=this.value/100;document.getElementById('m-rv-collageSplit').textContent=this.value+'%';render()"></div>
+      <div class="collage-slots">
+        <label class="collage-slot" for="m-coll0"><div>🖼</div><div style="font-size:.7rem">Img 1</div><input type="file" id="m-coll0" accept="image/*" style="display:none"></label>
+        <label class="collage-slot" for="m-coll1"><div>🖼</div><div style="font-size:.7rem">Img 2</div><input type="file" id="m-coll1" accept="image/*" style="display:none"></label>
+        ${S.collageLayout.startsWith('3')||S.collageLayout==='4'?`<label class="collage-slot" for="m-coll2"><div>🖼</div><div style="font-size:.7rem">Img 3</div><input type="file" id="m-coll2" accept="image/*" style="display:none"></label>`:''}
+        ${S.collageLayout==='4'?`<label class="collage-slot" for="m-coll3"><div>🖼</div><div style="font-size:.7rem">Img 4</div><input type="file" id="m-coll3" accept="image/*" style="display:none"></label>`:''}
+      </div>
     `:''}
     <label class="fl" style="margin-top:4px">Formato</label>
     <select onchange="setFmt(this.value);this.blur()" style="margin-bottom:8px">
@@ -1328,12 +1454,12 @@ function renderMobPanel(){
 function bindMobEvents(){
   const mi=document.getElementById('m-imgUp');
   if(mi) mi.addEventListener('change',loadLocalImg);
-  const mf=document.getElementById('m-fotoUp');
-  if(mf) mf.addEventListener('change',loadFotoImg);
-  const mc0=document.getElementById('m-coll0');
-  if(mc0) mc0.addEventListener('change',e=>loadCollageImg(e,0));
-  const mc1=document.getElementById('m-coll1');
-  if(mc1) mc1.addEventListener('change',e=>loadCollageImg(e,1));
+  const mbg2=document.getElementById('m-bgUp2');if(mbg2)mbg2.addEventListener('change',loadLocalImg);
+  const mf=document.getElementById('m-fotoUp');if(mf)mf.addEventListener('change',loadFotoImg);
+  const mc0=document.getElementById('m-coll0');if(mc0)mc0.addEventListener('change',e=>loadCollageImg(e,0));
+  const mc1=document.getElementById('m-coll1');if(mc1)mc1.addEventListener('change',e=>loadCollageImg(e,1));
+  const mc2=document.getElementById('m-coll2');if(mc2)mc2.addEventListener('change',e=>loadCollageImg(e,2));
+  const mc3=document.getElementById('m-coll3');if(mc3)mc3.addEventListener('change',e=>loadCollageImg(e,3));
   const mq=document.getElementById('m-quoteIn');
   if(mq) mq.addEventListener('input',e=>{S.quote=e.target.value;render();});
   const mqa=document.getElementById('m-quoteAuthorIn');
