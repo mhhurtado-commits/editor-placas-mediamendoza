@@ -29,6 +29,19 @@ let S={
   resizeStart:null,
   tShadow:false,  // sombra título
   cShadow:false,  // sombra categoría
+  mode:'normal',  // 'normal' | 'textual' | 'foto' | 'collage'
+  // ── modo textual ──
+  quote:'',       // texto de la cita
+  quoteAuthor:'', // autor / fuente
+  quoteStyle:'verde', // 'verde'|'negro'|'blanco'
+  // ── modo foto ──
+  fotoImg:null,   // imagen del círculo
+  fotoSize:0.28,  // fracción del ancho
+  fotoX:0.72, fotoY:0.18, // posición centro (fracción)
+  fotoBorder:'#a6ce39',
+  // ── modo collage ──
+  collageImgs:[null,null], // [img1, img2]
+  collageSplit:0.5,        // fracción horizontal del corte
 };
 
 // ── HISTORIAL DESHACER ──
@@ -230,9 +243,212 @@ const TPLS={
 };
 
 // ── RENDER ──
+// ══════════════════════════════════════════════
+// MODOS ESPECIALES
+// ══════════════════════════════════════════════
+
+function setMode(m){
+  S.mode=m;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('on'));
+  const mb=document.getElementById('mode-'+m);if(mb)mb.classList.add('on');
+  // Mostrar/ocultar secciones según modo
+  const isSp=m!=='normal';
+  document.querySelectorAll('.normal-only').forEach(el=>el.style.display=isSp?'none':'');
+  document.querySelectorAll('.special-only').forEach(el=>el.style.display=isSp?'':'none');
+  document.getElementById('special-panel-'+m)&&
+    document.querySelectorAll('[id^="special-panel-"]').forEach(el=>{
+      el.style.display=el.id==='special-panel-'+m?'':'none';
+    });
+  render();
+}
+function setQS(el){
+  // Cambiar estilo de cita
+  document.querySelectorAll('[id^="qs-"]').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  snapShot();render();
+}
+
+// ── RENDER TEXTUAL ──
+function renderTextual(W,H){
+  const style=S.quoteStyle;
+  // Fondo
+  if(style==='verde'){
+    ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,H);
+    // Patron sutil de líneas diagonales
+    ctx.save();ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=W*.018;
+    for(let i=-H;i<W+H;i+=Math.round(W*.07)){
+      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
+    }
+    ctx.restore();
+  } else if(style==='negro'){
+    ctx.fillStyle='#111111';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,Math.round(H*.008));
+    ctx.fillStyle='#a6ce39';ctx.fillRect(0,H-Math.round(H*.008),W,Math.round(H*.008));
+  } else { // blanco
+    ctx.fillStyle='#f5f9e8';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,Math.round(W*.012),H);
+    ctx.fillStyle='#111111';ctx.fillRect(Math.round(W*.012),0,Math.round(W*.003),H);
+  }
+  // Logo
+  const pad=Math.round(W*.05);
+  if(S.logoImg){
+    const lw=Math.round(W*.22);
+    const lh=Math.round(lw*(S.logoImg.height/S.logoImg.width));
+    ctx.save();
+    if(style==='verde')ctx.filter='brightness(0) invert(1)';
+    else if(style==='blanco')ctx.filter='brightness(0)';
+    ctx.globalAlpha=S.lOp;
+    ctx.drawImage(S.logoImg,pad,pad,lw,lh);
+    ctx.filter='none';ctx.restore();
+  }
+  if(!S.quote)return;
+  const isVerde=style==='verde';
+  const isBlanco=style==='blanco';
+  const textCol=isVerde?'#111111':isBlanco?'#111111':'#ffffff';
+  const accentCol=isVerde?'rgba(0,0,0,.18)':'#a6ce39';
+  // Comillas tipográficas grandes
+  const qsz=Math.round(W*.22);
+  ctx.save();
+  ctx.font=`900 ${qsz}px 'BebasNeue',sans-serif`;
+  ctx.fillStyle=isVerde?'rgba(0,0,0,.12)':'rgba(166,206,57,.25)';
+  ctx.textBaseline='top';
+  ctx.fillText('"',Math.round(W*.04),Math.round(H*.12));
+  ctx.restore();
+  // Texto de la cita
+  const aw=Math.round(W*.82);
+  const qpad=Math.round(W*.09);
+  let sz=Math.max(16,Math.round(W*.065));
+  let lines,lh,bh;
+  for(let i=0;i<25;i++){
+    ctx.font=`400 ${sz}px 'BebasNeue',sans-serif`;
+    lines=wrapText(ctx,S.quote.toUpperCase(),aw);
+    lh=sz*1.18;bh=lines.length*lh;
+    if(bh<=H*.52||sz<=16)break;
+    sz=Math.max(16,Math.round(sz*.88));
+  }
+  const qy=Math.round(H*.28);
+  ctx.save();
+  ctx.textBaseline='top';ctx.textAlign='left';
+  ctx.fillStyle=textCol;
+  ctx.font=`400 ${sz}px 'BebasNeue',sans-serif`;
+  lines.forEach((l,i)=>ctx.fillText(l,qpad,qy+i*lh));
+  ctx.restore();
+  // Línea separadora + autor
+  if(S.quoteAuthor){
+    const lineY=qy+bh+Math.round(H*.04);
+    ctx.save();
+    ctx.strokeStyle=accentCol;ctx.lineWidth=Math.round(W*.004);
+    ctx.beginPath();ctx.moveTo(qpad,lineY);ctx.lineTo(qpad+Math.round(W*.12),lineY);ctx.stroke();
+    const asz=Math.round(W*.032);
+    ctx.font=`700 ${asz}px 'Economica',sans-serif`;
+    ctx.fillStyle=isVerde?'rgba(0,0,0,.7)':isBlanco?'rgba(0,0,0,.6)':'rgba(255,255,255,.7)';
+    ctx.textBaseline='top';
+    ctx.fillText('— '+S.quoteAuthor.toUpperCase(),qpad,lineY+Math.round(H*.025));
+    ctx.restore();
+  }
+}
+
+// ── RENDER FOTO CÍRCULO ──
+function renderFoto(W,H){
+  // Render normal de fondo + plantilla
+  if(S.bgImg){
+    ctx.save();
+    if(S.iBlur>0)ctx.filter=`blur(${S.iBlur}px)`;
+    const img=S.bgImg,ir=img.width/img.height,cr=W/H;
+    let sx,sy,sw,sh;
+    if(ir>cr){sh=img.height;sw=sh*cr;sx=(img.width-sw)/2;sy=0;}
+    else{sw=img.width;sh=sw/cr;sx=0;sy=(img.height-sh)/2;}
+    const p=S.iBlur*4;
+    ctx.drawImage(img,sx,sy,sw,sh,-p,-p,W+p*2,H+p*2);
+    ctx.filter='none';ctx.restore();
+    if(S.iDark>0){ctx.save();ctx.globalAlpha=S.iDark;ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.restore();}
+  } else {
+    ctx.fillStyle='#dedad3';ctx.fillRect(0,0,W,H);
+  }
+  (TPLS[S.tpl]||TPLS.normal)(W,H);
+  // Elementos normales
+  if(ELS.title.x===null)ensurePos('title');
+  if(ELS.cat.x===null)ensurePos('cat');
+  if(ELS.logo.x===null)ensurePos('logo');
+  drawLogo();drawCat();drawTitle();
+  // Foto círculo
+  if(!S.fotoImg)return;
+  const R=Math.round(W*S.fotoSize/2);
+  const cx=Math.round(W*S.fotoX);
+  const cy=Math.round(H*S.fotoY);
+  ctx.save();
+  // Sombra del círculo
+  ctx.shadowColor='rgba(0,0,0,.4)';ctx.shadowBlur=Math.round(R*.18);
+  // Borde
+  ctx.beginPath();ctx.arc(cx,cy,R+Math.round(R*.06),0,Math.PI*2);
+  ctx.fillStyle=S.fotoBorder;ctx.fill();
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;
+  // Clip circular y dibujar imagen
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+  const fi=S.fotoImg,fr=fi.width/fi.height;
+  const fd=R*2;
+  let fsx,fsy,fsw,fsh;
+  if(fr>1){fsh=fi.height;fsw=fsh;fsx=(fi.width-fsw)/2;fsy=0;}
+  else{fsw=fi.width;fsh=fsw;fsx=0;fsy=(fi.height-fsh)/2;}
+  ctx.drawImage(fi,fsx,fsy,fsw,fsh,cx-R,cy-R,fd,fd);
+  ctx.restore();
+}
+
+// ── RENDER COLLAGE ──
+function renderCollage(W,H){
+  const split=Math.round(W*S.collageSplit);
+  // Panel izquierdo
+  if(S.collageImgs[0]){
+    ctx.save();ctx.beginPath();ctx.rect(0,0,split,H);ctx.clip();
+    const i=S.collageImgs[0],ir=i.width/i.height,cr=split/H;
+    let sx,sy,sw,sh;
+    if(ir>cr){sh=i.height;sw=sh*cr;sx=(i.width-sw)/2;sy=0;}
+    else{sw=i.width;sh=sw/cr;sx=0;sy=(i.height-sh)/2;}
+    ctx.drawImage(i,sx,sy,sw,sh,0,0,split,H);
+    ctx.restore();
+  } else {
+    ctx.fillStyle='#2a2a2a';ctx.fillRect(0,0,split,H);
+    ctx.fillStyle='#444';ctx.font=`${Math.round(W*.025)}px Montserrat,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('Imagen 1',split/2,H/2);ctx.textAlign='left';
+  }
+  // Panel derecho
+  if(S.collageImgs[1]){
+    ctx.save();ctx.beginPath();ctx.rect(split,0,W-split,H);ctx.clip();
+    const i=S.collageImgs[1],rw=W-split,ir=i.width/i.height,cr=rw/H;
+    let sx,sy,sw,sh;
+    if(ir>cr){sh=i.height;sw=sh*cr;sx=(i.width-sw)/2;sy=0;}
+    else{sw=i.width;sh=sw/cr;sx=0;sy=(i.height-sh)/2;}
+    ctx.drawImage(i,sx,sy,sw,sh,split,0,rw,H);
+    ctx.restore();
+  } else {
+    ctx.fillStyle='#1a1a1a';ctx.fillRect(split,0,W-split,H);
+    ctx.fillStyle='#444';ctx.font=`${Math.round(W*.025)}px Montserrat,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('Imagen 2',split+(W-split)/2,H/2);ctx.textAlign='left';
+  }
+  // Divisor central
+  const dw=Math.round(W*.012);
+  ctx.fillStyle='#111';ctx.fillRect(split-dw/2,0,dw,H);
+  ctx.fillStyle='#a6ce39';ctx.fillRect(split-Math.round(dw*.25),0,Math.round(dw*.25),H);
+  // Overlay degradado inferior para texto
+  const g=ctx.createLinearGradient(0,H*.55,0,H);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // Logo + texto
+  if(ELS.logo.x===null)ensurePos('logo');
+  if(ELS.title.x===null)ensurePos('title');
+  if(ELS.cat.x===null)ensurePos('cat');
+  drawLogo();drawCat();drawTitle();
+}
+
 function render(){
   const fmt=FMTS[S.fmt];const W=fmt.w,H=fmt.h;
   ctx.clearRect(0,0,W,H);
+  // Desviar a modos especiales
+  if(S.mode==='textual'){renderTextual(W,H);if(S.active)drawActiveUI(W,H);return;}
+  if(S.mode==='foto'){renderFoto(W,H);if(S.active)drawActiveUI(W,H);return;}
+  if(S.mode==='collage'){renderCollage(W,H);if(S.active)drawActiveUI(W,H);return;}
   // BG
   if(S.bgImg){
     ctx.save();
@@ -721,6 +937,26 @@ function loadLocalImg(ev){
   };
   rd.readAsDataURL(f);
 }
+function loadFotoImg(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{S.fotoImg=img;render();};
+    img.src=e.target.result;
+  };
+  rd.readAsDataURL(f);
+}
+function loadCollageImg(ev,idx){
+  const f=ev.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{S.collageImgs[idx]=img;render();};
+    img.src=e.target.result;
+  };
+  rd.readAsDataURL(f);
+}
 function loadLogo(ev){
   const f=ev.target.files[0];if(!f)return;
   const rd=new FileReader();
@@ -783,6 +1019,10 @@ function clearAll(){
   });
   const ovTog=document.getElementById('ovTog');
   if(ovTog)ovTog.checked=false;
+  S.mode='normal'; S.quote=''; S.quoteAuthor=''; S.quoteStyle='verde';
+  S.fotoImg=null; S.fotoSize=0.28; S.fotoX=0.72; S.fotoY=0.18; S.fotoBorder='#a6ce39';
+  S.collageImgs=[null,null]; S.collageSplit=0.5;
+  setMode('normal');
   render(); drawPreviews();
   if(_panelOpen) renderMobPanel();
   showToast('✅ Placa reiniciada');
@@ -858,6 +1098,48 @@ function showToast(msg){
 // ── MOBILE TAB SYSTEM ──
 const MOB_PANELS = {
   noticia: ()=>`
+    <div class="mode-bar" style="margin-bottom:10px">
+      <div class="mode-btn ${S.mode==='normal'?'on':''}"   onclick="setMode('normal')"  >📰 Normal</div>
+      <div class="mode-btn ${S.mode==='textual'?'on':''}"  onclick="setMode('textual')" >💬 Textual</div>
+      <div class="mode-btn ${S.mode==='foto'?'on':''}"     onclick="setMode('foto')"    >👤 Foto</div>
+      <div class="mode-btn ${S.mode==='collage'?'on':''}"  onclick="setMode('collage')" >🖼 Collage</div>
+    </div>
+    ${S.mode==='textual'?`
+      <label class="fl">Texto de la cita</label>
+      <textarea id="m-quoteIn" rows="3" placeholder="Textual...">${S.quote}</textarea>
+      <label class="fl">Autor / Fuente</label>
+      <input type="text" id="m-quoteAuthorIn" placeholder="Nombre, cargo..." value="${S.quoteAuthor}">
+      <label class="fl" style="margin-top:8px">Estilo</label>
+      <div style="display:flex;gap:5px;margin:4px 0">
+        <div class="tpl-btn ${S.quoteStyle==='verde'?'on':''}"  onclick="S.quoteStyle='verde'; render();renderMobPanel()" style="flex:1;font-size:.72rem;padding:5px">Verde MM</div>
+        <div class="tpl-btn ${S.quoteStyle==='negro'?'on':''}"  onclick="S.quoteStyle='negro'; render();renderMobPanel()" style="flex:1;font-size:.72rem;padding:5px">Negro</div>
+        <div class="tpl-btn ${S.quoteStyle==='blanco'?'on':''}" onclick="S.quoteStyle='blanco';render();renderMobPanel()" style="flex:1;font-size:.72rem;padding:5px">Blanco</div>
+      </div>
+    `:''}
+    ${S.mode==='foto'?`
+      <label class="uplbl" for="m-fotoUp">📁 Foto de persona</label>
+      <input type="file" id="m-fotoUp" accept="image/*">
+      <label class="fl" style="margin-top:6px">Tamaño <span class="rval" id="m-rv-fotoSize">${Math.round(S.fotoSize*100)}%</span></label>
+      <div class="rrow"><input type="range" min="10" max="55" value="${Math.round(S.fotoSize*100)}"
+        oninput="S.fotoSize=this.value/100;document.getElementById('m-rv-fotoSize').textContent=this.value+'%';render()"></div>
+      <label class="fl">Posición H <span class="rval" id="m-rv-fotoX">${Math.round(S.fotoX*100)}%</span></label>
+      <div class="rrow"><input type="range" min="5" max="95" value="${Math.round(S.fotoX*100)}"
+        oninput="S.fotoX=this.value/100;document.getElementById('m-rv-fotoX').textContent=this.value+'%';render()"></div>
+      <label class="fl">Posición V <span class="rval" id="m-rv-fotoY">${Math.round(S.fotoY*100)}%</span></label>
+      <div class="rrow"><input type="range" min="5" max="90" value="${Math.round(S.fotoY*100)}"
+        oninput="S.fotoY=this.value/100;document.getElementById('m-rv-fotoY').textContent=this.value+'%';render()"></div>
+    `:''}
+    ${S.mode==='collage'?`
+      <div class="collage-slots">
+        <label class="collage-slot" for="m-coll0"><div>🖼</div><div>Imagen 1</div>
+          <input type="file" id="m-coll0" accept="image/*" style="display:none"></label>
+        <label class="collage-slot" for="m-coll1"><div>🖼</div><div>Imagen 2</div>
+          <input type="file" id="m-coll1" accept="image/*" style="display:none"></label>
+      </div>
+      <label class="fl">División <span class="rval" id="m-rv-collageSplit">${Math.round(S.collageSplit*100)}%</span></label>
+      <div class="rrow"><input type="range" min="20" max="80" value="${Math.round(S.collageSplit*100)}"
+        oninput="S.collageSplit=this.value/100;document.getElementById('m-rv-collageSplit').textContent=this.value+'%';render()"></div>
+    `:''}
     <label class="fl" style="margin-top:4px">Formato</label>
     <select onchange="setFmt(this.value);this.blur()" style="margin-bottom:8px">
       ${['sq','story','portrait','fb','tw'].map(f=>`<option value="${f}" ${S.fmt===f?'selected':''}>${{sq:'Instagram Cuadrado (1080×1080)',story:'Historia (1080×1920)',portrait:'Portrait (1080×1350)',fb:'Facebook (1200×628)',tw:'Twitter / X (1600×900)'}[f]}</option>`).join('')}
@@ -1046,6 +1328,16 @@ function renderMobPanel(){
 function bindMobEvents(){
   const mi=document.getElementById('m-imgUp');
   if(mi) mi.addEventListener('change',loadLocalImg);
+  const mf=document.getElementById('m-fotoUp');
+  if(mf) mf.addEventListener('change',loadFotoImg);
+  const mc0=document.getElementById('m-coll0');
+  if(mc0) mc0.addEventListener('change',e=>loadCollageImg(e,0));
+  const mc1=document.getElementById('m-coll1');
+  if(mc1) mc1.addEventListener('change',e=>loadCollageImg(e,1));
+  const mq=document.getElementById('m-quoteIn');
+  if(mq) mq.addEventListener('input',e=>{S.quote=e.target.value;render();});
+  const mqa=document.getElementById('m-quoteAuthorIn');
+  if(mqa) mqa.addEventListener('input',e=>{S.quoteAuthor=e.target.value;render();});
   const ml=document.getElementById('m-logoUp');
   if(ml) ml.addEventListener('change',loadLogo);
   const mt=document.getElementById('m-titIn');
