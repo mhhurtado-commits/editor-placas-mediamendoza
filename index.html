@@ -67,17 +67,28 @@
       <textarea id="quoteIn" rows="4" placeholder="Escribí el textual aquí..." oninput="S.quote=this.value;render()"></textarea>
       <label class="fl">Autor / Fuente</label>
       <input type="text" id="quoteAuthorIn" placeholder="Nombre, cargo..." oninput="S.quoteAuthor=this.value;render()">
-      <label class="fl" style="margin-top:10px">Estilo</label>
+      <label class="fl" style="margin-top:10px">Estilo de fondo</label>
       <div style="display:flex;gap:6px;margin:4px 0 10px">
         <div class="tpl-btn on" id="qs-verde"   onclick="S.quoteStyle='verde';  setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Verde MM</div>
-        <div class="tpl-btn"   id="qs-negro"   onclick="S.quoteStyle='negro';  setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Negro</div>
-        <div class="tpl-btn"   id="qs-blanco"  onclick="S.quoteStyle='blanco'; setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Blanco</div>
+        <div class="tpl-btn"   id="qs-negro"    onclick="S.quoteStyle='negro';  setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Negro</div>
+        <div class="tpl-btn"   id="qs-blanco"   onclick="S.quoteStyle='blanco'; setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Blanco</div>
       </div>
+      <label class="fl">Imagen de fondo <span style="font-size:.72rem;color:var(--g60)">(opcional — aplica overlay de color)</span></label>
+      <label class="uplbl" for="textualBgUp" style="margin-top:4px">📁 Subir imagen de fondo</label>
+      <input type="file" id="textualBgUp" accept="image/*" onchange="loadLocalImg(event)">
+      <button class="btn-reset" onclick="S.bgImg=null;render()" style="margin-top:6px;width:100%;text-align:center">✕ Quitar imagen de fondo</button>
     </div>
 
     <!-- PANEL MODO FOTO CÍRCULO -->
     <div id="special-panel-foto" class="special-only mode-section">
-      <label class="uplbl" for="fotoImgUp">📁 Subir foto de persona</label>
+      <div style="background:var(--g10);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:.78rem;color:var(--g70);line-height:1.4">
+        📌 <strong>Cómo funciona:</strong> La imagen de la noticia va de fondo. Acá cargás la foto de la persona que aparece en el círculo.
+      </div>
+      <label class="fl">Imagen de fondo (noticia)</label>
+      <label class="uplbl" for="bgImgUp2">📁 Subir imagen de fondo</label>
+      <input type="file" id="bgImgUp2" accept="image/*" onchange="loadLocalImg(event)">
+      <label class="fl" style="margin-top:10px">Foto en círculo (persona)</label>
+      <label class="uplbl" for="fotoImgUp">📁 Subir foto de la persona</label>
       <input type="file" id="fotoImgUp" accept="image/*" onchange="loadFotoImg(event)">
       <label class="fl" style="margin-top:8px">Tamaño <span class="rval" id="rv-fotoSize">28%</span></label>
       <div class="rrow"><input type="range" id="r-fotoSize" min="10" max="55" value="28"
@@ -99,21 +110,23 @@
 
     <!-- PANEL MODO COLLAGE -->
     <div id="special-panel-collage" class="special-only mode-section">
-      <div class="collage-slots">
-        <label class="collage-slot" for="coll0">
-          <div style="font-size:1.4rem">🖼</div>
-          <div>Imagen 1</div>
-          <input type="file" id="coll0" accept="image/*" style="display:none" onchange="loadCollageImg(event,0)">
-        </label>
-        <label class="collage-slot" for="coll1">
-          <div style="font-size:1.4rem">🖼</div>
-          <div>Imagen 2</div>
-          <input type="file" id="coll1" accept="image/*" style="display:none" onchange="loadCollageImg(event,1)">
-        </label>
+      <label class="fl">Distribución</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:4px 0 12px">
+        <div class="tpl-btn on" id="cl-2h" onclick="S.collageLayout='2h';setCL(this)" title="2 lado a lado" style="padding:6px 2px;font-size:.7rem">⬜⬜</div>
+        <div class="tpl-btn"   id="cl-2v" onclick="S.collageLayout='2v';setCL(this)" title="2 arriba/abajo" style="padding:6px 2px;font-size:.7rem">🔲</div>
+        <div class="tpl-btn"   id="cl-3t" onclick="S.collageLayout='3t';setCL(this)" title="grande arriba, 2 abajo" style="padding:6px 2px;font-size:.65rem">1↑2↓</div>
+        <div class="tpl-btn"   id="cl-3b" onclick="S.collageLayout='3b';setCL(this)" title="2 arriba, grande abajo" style="padding:6px 2px;font-size:.65rem">2↑1↓</div>
+        <div class="tpl-btn"   id="cl-3l" onclick="S.collageLayout='3l';setCL(this)" title="grande izq, 2 der" style="padding:6px 2px;font-size:.65rem">1←2→</div>
+        <div class="tpl-btn"   id="cl-3r" onclick="S.collageLayout='3r';setCL(this)" title="2 izq, grande der" style="padding:6px 2px;font-size:.65rem">2←1→</div>
+        <div class="tpl-btn"   id="cl-4"  onclick="S.collageLayout='4'; setCL(this)" title="4 iguales" style="padding:6px 2px;font-size:.7rem">⊞</div>
       </div>
-      <label class="fl">División <span class="rval" id="rv-collageSplit">50%</span></label>
-      <div class="rrow"><input type="range" id="r-collageSplit" min="20" max="80" value="50"
-        oninput="S.collageSplit=this.value/100;document.getElementById('rv-collageSplit').textContent=this.value+'%';render()"></div>
+      <label class="fl">Imágenes</label>
+      <div class="collage-slots" style="grid-template-columns:1fr 1fr">
+        <label class="collage-slot" for="coll0"><div>🖼</div><div style="font-size:.72rem">Imagen 1</div><input type="file" id="coll0" accept="image/*" style="display:none" onchange="loadCollageImg(event,0)"></label>
+        <label class="collage-slot" for="coll1"><div>🖼</div><div style="font-size:.72rem">Imagen 2</div><input type="file" id="coll1" accept="image/*" style="display:none" onchange="loadCollageImg(event,1)"></label>
+        <label class="collage-slot" for="coll2" id="coll-slot-2"><div>🖼</div><div style="font-size:.72rem">Imagen 3</div><input type="file" id="coll2" accept="image/*" style="display:none" onchange="loadCollageImg(event,2)"></label>
+        <label class="collage-slot" for="coll3" id="coll-slot-3"><div>🖼</div><div style="font-size:.72rem">Imagen 4</div><input type="file" id="coll3" accept="image/*" style="display:none" onchange="loadCollageImg(event,3)"></label>
+      </div>
     </div>
 
     <!-- NOTICIA -->
