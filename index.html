@@ -13,6 +13,20 @@
     .el-actions span{font-size:.75rem;color:var(--g60);flex:1;}
     .btn-reset{padding:3px 8px;font-size:.75rem;background:none;border:1px solid var(--g30);border-radius:4px;cursor:pointer;color:var(--g70);}
     .btn-reset:hover{border-color:var(--green);color:var(--green);}
+    /* Modos especiales */
+    .mode-bar{display:flex;gap:5px;margin:10px 0 14px;padding:0 2px;}
+    .mode-btn{flex:1;padding:6px 4px;font-size:.72rem;font-weight:600;text-align:center;
+      border:1.5px solid var(--g20);border-radius:6px;cursor:pointer;
+      background:var(--g10);color:var(--g70);transition:all .15s;}
+    .mode-btn:hover{border-color:var(--green);color:var(--green);}
+    .mode-btn.on{background:var(--green);border-color:var(--green);color:#111;}
+    .special-only{display:none;}
+    .mode-section{margin-top:8px;}
+    .collage-slots{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
+    .collage-slot{border:2px dashed var(--g30);border-radius:6px;padding:10px 6px;
+      text-align:center;font-size:.75rem;color:var(--g60);cursor:pointer;}
+    .collage-slot:hover{border-color:var(--green);}
+    .split-preview{height:6px;border-radius:3px;margin:6px 0;background:linear-gradient(90deg,#555 var(--sp,50%),#333 var(--sp,50%));position:relative;}
   </style>
 </head>
 <body>
@@ -39,8 +53,71 @@
 
 
 
+    <!-- MODO DE PLACA -->
+    <div class="mode-bar">
+      <div class="mode-btn on"  id="mode-normal"   onclick="setMode('normal')">📰 Normal</div>
+      <div class="mode-btn"     id="mode-textual"  onclick="setMode('textual')">💬 Textual</div>
+      <div class="mode-btn"     id="mode-foto"     onclick="setMode('foto')">👤 Foto</div>
+      <div class="mode-btn"     id="mode-collage"  onclick="setMode('collage')">🖼 Collage</div>
+    </div>
+
+    <!-- PANEL MODO TEXTUAL -->
+    <div id="special-panel-textual" class="special-only mode-section">
+      <label class="fl">Texto de la cita</label>
+      <textarea id="quoteIn" rows="4" placeholder="Escribí el textual aquí..." oninput="S.quote=this.value;render()"></textarea>
+      <label class="fl">Autor / Fuente</label>
+      <input type="text" id="quoteAuthorIn" placeholder="Nombre, cargo..." oninput="S.quoteAuthor=this.value;render()">
+      <label class="fl" style="margin-top:10px">Estilo</label>
+      <div style="display:flex;gap:6px;margin:4px 0 10px">
+        <div class="tpl-btn on" id="qs-verde"   onclick="S.quoteStyle='verde';  setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Verde MM</div>
+        <div class="tpl-btn"   id="qs-negro"   onclick="S.quoteStyle='negro';  setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Negro</div>
+        <div class="tpl-btn"   id="qs-blanco"  onclick="S.quoteStyle='blanco'; setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Blanco</div>
+      </div>
+    </div>
+
+    <!-- PANEL MODO FOTO CÍRCULO -->
+    <div id="special-panel-foto" class="special-only mode-section">
+      <label class="uplbl" for="fotoImgUp">📁 Subir foto de persona</label>
+      <input type="file" id="fotoImgUp" accept="image/*" onchange="loadFotoImg(event)">
+      <label class="fl" style="margin-top:8px">Tamaño <span class="rval" id="rv-fotoSize">28%</span></label>
+      <div class="rrow"><input type="range" id="r-fotoSize" min="10" max="55" value="28"
+        oninput="S.fotoSize=this.value/100;document.getElementById('rv-fotoSize').textContent=this.value+'%';render()"></div>
+      <label class="fl">Posición horizontal <span class="rval" id="rv-fotoX">72%</span></label>
+      <div class="rrow"><input type="range" id="r-fotoX" min="5" max="95" value="72"
+        oninput="S.fotoX=this.value/100;document.getElementById('rv-fotoX').textContent=this.value+'%';render()"></div>
+      <label class="fl">Posición vertical <span class="rval" id="rv-fotoY">18%</span></label>
+      <div class="rrow"><input type="range" id="r-fotoY" min="5" max="90" value="18"
+        oninput="S.fotoY=this.value/100;document.getElementById('rv-fotoY').textContent=this.value+'%';render()"></div>
+      <label class="fl">Color del borde</label>
+      <div class="swatches">
+        <input type="color" value="#a6ce39" oninput="S.fotoBorder=this.value;render()">
+        <div class="sw on" style="background:#a6ce39" onclick="S.fotoBorder='#a6ce39';render()"></div>
+        <div class="sw" style="background:#fff;border-color:#ccc" onclick="S.fotoBorder='#ffffff';render()"></div>
+        <div class="sw" style="background:#111" onclick="S.fotoBorder='#111111';render()"></div>
+      </div>
+    </div>
+
+    <!-- PANEL MODO COLLAGE -->
+    <div id="special-panel-collage" class="special-only mode-section">
+      <div class="collage-slots">
+        <label class="collage-slot" for="coll0">
+          <div style="font-size:1.4rem">🖼</div>
+          <div>Imagen 1</div>
+          <input type="file" id="coll0" accept="image/*" style="display:none" onchange="loadCollageImg(event,0)">
+        </label>
+        <label class="collage-slot" for="coll1">
+          <div style="font-size:1.4rem">🖼</div>
+          <div>Imagen 2</div>
+          <input type="file" id="coll1" accept="image/*" style="display:none" onchange="loadCollageImg(event,1)">
+        </label>
+      </div>
+      <label class="fl">División <span class="rval" id="rv-collageSplit">50%</span></label>
+      <div class="rrow"><input type="range" id="r-collageSplit" min="20" max="80" value="50"
+        oninput="S.collageSplit=this.value/100;document.getElementById('rv-collageSplit').textContent=this.value+'%';render()"></div>
+    </div>
+
     <!-- NOTICIA -->
-    <div class="acc-item">
+    <div class="acc-item normal-only">
       <div class="acc-head open" onclick="toggleAcc(this)">
         <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Noticia</span>
         <span class="acc-icon">▼</span>
@@ -68,7 +145,7 @@
     </div>
 
     <!-- PLANTILLA -->
-    <div class="acc-item">
+    <div class="acc-item normal-only">
       <div class="acc-head" onclick="toggleAcc(this)">
         <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Plantilla</span>
         <span class="acc-icon">▼</span>
@@ -93,7 +170,7 @@
     </div>
 
     <!-- IMAGEN -->
-    <div class="acc-item">
+    <div class="acc-item normal-only">
       <div class="acc-head" onclick="toggleAcc(this)">
         <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Imagen de fondo</span>
         <span class="acc-icon">▼</span>
@@ -111,7 +188,7 @@
     </div>
 
     <!-- TÍTULO -->
-    <div class="acc-item">
+    <div class="acc-item normal-only">
       <div class="acc-head" onclick="toggleAcc(this)">
         <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Título</span>
         <span class="acc-icon">▼</span>
@@ -155,7 +232,7 @@
     </div>
 
     <!-- CATEGORÍA -->
-    <div class="acc-item">
+    <div class="acc-item normal-only">
       <div class="acc-head" onclick="toggleAcc(this)">
         <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Categoría</span>
         <span class="acc-icon">▼</span>
@@ -198,7 +275,7 @@
     </div>
 
     <!-- OVERLAY -->
-    <div class="acc-item">
+    <div class="acc-item normal-only">
       <div class="acc-head" onclick="toggleAcc(this)">
         <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Capa de color</span>
         <span class="acc-icon">▼</span>
@@ -222,7 +299,7 @@
     </div>
 
     <!-- LOGO -->
-    <div class="acc-item">
+    <div class="acc-item normal-only">
       <div class="acc-head" onclick="toggleAcc(this)">
         <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Logo</span>
         <span class="acc-icon">▼</span>
