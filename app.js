@@ -140,8 +140,11 @@ function defaultPos(key){
   if(key==='title'){
     const w=Math.round(W*.82),h=Math.round(H*.19);
     const x=Math.round((W-w)/2);
-    const y=S.tpl==='normal'?Math.round((H-h)/2):Math.round(H*.52);
-    return{x,y,w,h};
+    if(S.tpl==='normal')return{x,y:Math.round((H-h)/2),w,h};
+    if(S.tpl==='titular')return{x,y:Math.round((H-h)/2),w,h};
+    if(S.tpl==='minimalista')return{x,y:Math.round(H*.73),w,h:Math.round(H*.16)};
+    if(S.tpl==='franja')return{x:Math.round(W*.06),y:Math.round(H*.52),w:Math.round(W*.88),h};
+    return{x,y:Math.round(H*.52),w,h};
   }
   if(key==='cat'){
     const w=Math.round(W*.36),h=Math.round(H*.072);
@@ -200,6 +203,30 @@ const TPLS={
   urgente(W,H){ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,Math.round(H*.055));const g=ctx.createLinearGradient(0,H*.4,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.88)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);},
   // Economía: igual que banda pero con acento verde corporativo más grueso
   economia(W,H){const bh=Math.round(H*.34);ctx.fillStyle='rgba(0,0,0,.90)';ctx.fillRect(0,H-bh,W,bh);ctx.fillStyle='#a6ce39';ctx.fillRect(0,H-bh,W,Math.round(H*.03));},
+  // Franja — borde izquierdo verde grueso, degradado negro inferior, estilo Reuters/BBC
+  franja(W,H){
+    const g=ctx.createLinearGradient(0,H*.42,0,H);
+    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.86)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,Math.round(W*.038),H);
+    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(Math.round(W*.038),0,Math.round(W*.004),H);
+  },
+  // Titular — fondo negro sólido sin imagen, texto protagonista, estilo BBC Breaking
+  titular(W,H){
+    ctx.fillStyle='#111111';ctx.fillRect(0,0,W,H);
+    // Franja verde superior fina
+    ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,Math.round(H*.012));
+    // Franja verde inferior fina
+    ctx.fillStyle='#a6ce39';ctx.fillRect(0,H-Math.round(H*.012),W,Math.round(H*.012));
+  },
+  // Minimalista — imagen desaturada suave + bloque blanco nítido en tercio inferior, estilo Guardian
+  minimalista(W,H){
+    // Desaturar imagen con overlay blanco semitransparente
+    ctx.fillStyle='rgba(245,249,232,.18)';ctx.fillRect(0,0,W,H);
+    const bh=Math.round(H*.3);
+    ctx.fillStyle='rgba(255,255,255,.93)';ctx.fillRect(0,H-bh,W,bh);
+    ctx.fillStyle='#a6ce39';ctx.fillRect(0,H-bh,W,Math.round(H*.008));
+  },
 };
 
 // ── RENDER ──
@@ -235,6 +262,16 @@ function render(){
     ctx.save();ctx.globalAlpha=S.ovOp;ctx.fillStyle=S.ovCol;ctx.fillRect(0,0,W,H);ctx.restore();
   }
   // Elementos
+  // Ajustar colores de texto según plantilla al resetear posiciones
+  if(ELS.title.x===null){
+    if(S.tpl==='minimalista'){S.tCol='#111111';S.tBg='transparent';S.tBgOp=0;}
+    else if(S.tpl==='titular'){S.tCol='#ffffff';S.tBg='transparent';S.tBgOp=0;}
+    else if(S.tpl==='franja'){S.tCol='#ffffff';S.tBg='#000000';S.tBgOp=.7;}
+  }
+  if(ELS.cat.x===null){
+    if(S.tpl==='minimalista'){S.cCol='#111111';S.cBg='#a6ce39';S.cBgOp=1;}
+    else{S.cCol='#ffffff';}
+  }
   ensurePos('logo'); drawLogo();
   ensurePos('cat');  drawCat();
   ensurePos('title');drawTitle();
@@ -299,6 +336,22 @@ function drawPreviewOnCanvas(c,k){
     clima:()=>{const g=tc.createLinearGradient(0,H*.55,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.78)');tc.fillStyle=g;tc.fillRect(0,0,W,H);tc.fillStyle='#a6ce39';tc.fillRect(0,H*.982,W,H*.018);},
     urgente:()=>{tc.fillStyle='#a6ce39';tc.fillRect(0,0,W,H*.07);const g=tc.createLinearGradient(0,H*.4,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.88)');tc.fillStyle=g;tc.fillRect(0,0,W,H);},
     economia:()=>{tc.fillStyle='rgba(0,0,0,.90)';tc.fillRect(0,H*.66,W,H*.34);tc.fillStyle='#a6ce39';tc.fillRect(0,H*.66,W,H*.04);},
+    franja:()=>{
+      const g=tc.createLinearGradient(0,H*.42,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.86)');
+      tc.fillStyle=g;tc.fillRect(0,0,W,H);
+      tc.fillStyle='#a6ce39';tc.fillRect(0,0,W*.04,H);
+      tc.fillStyle='rgba(0,0,0,.55)';tc.fillRect(W*.04,0,W*.004,H);
+    },
+    titular:()=>{
+      tc.fillStyle='#111111';tc.fillRect(0,0,W,H);
+      tc.fillStyle='#a6ce39';tc.fillRect(0,0,W,H*.015);
+      tc.fillStyle='#a6ce39';tc.fillRect(0,H-H*.015,W,H*.015);
+    },
+    minimalista:()=>{
+      tc.fillStyle='rgba(245,249,232,.18)';tc.fillRect(0,0,W,H);
+      tc.fillStyle='rgba(255,255,255,.93)';tc.fillRect(0,H*.7,W,H*.3);
+      tc.fillStyle='#a6ce39';tc.fillRect(0,H*.7,W,H*.009);
+    },
   };
   if(ov[k])ov[k]();
   tc.fillStyle='#fff';tc.font=`bold ${Math.round(H*.1)}px BebasNeue,sans-serif`;
@@ -681,7 +734,7 @@ function loadLogo(ev){
 
 // ── TEMPLATE PREVIEWS ──
 function drawPreviews(){
-  ['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia'].forEach(k=>{
+  ['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista'].forEach(k=>{
     const c=document.getElementById('tp-'+k);
     if(c) drawPreviewOnCanvas(c,k);
   });
@@ -822,10 +875,10 @@ const MOB_PANELS = {
 
   plantilla: ()=>`
     <div class="tpl-grid">
-      ${['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia'].map(k=>`
+      ${['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista'].map(k=>`
         <div class="tpl-btn ${S.tpl===k?'on':''}" onclick="setTpl('${k}');renderMobPanel()">
           <canvas class="tpl-prev" id="mtp-${k}"></canvas>
-          <div class="tpl-name">${{normal:'Normal',moderna:'Moderna',banda:'Banda',impacto:'Impacto',diagonal:'Diagonal',verde:'Verde MM',policiales:'Policiales',clima:'Clima',urgente:'Urgente',economia:'Economía'}[k]}</div>
+          <div class="tpl-name">${{normal:'Normal',moderna:'Moderna',banda:'Banda',impacto:'Impacto',diagonal:'Diagonal',verde:'Verde MM',policiales:'Policiales',clima:'Clima',urgente:'Urgente',economia:'Economía',franja:'Franja',titular:'Titular',minimalista:'Minimalista'}[k]}</div>
         </div>`).join('')}
     </div>`,
 
@@ -982,7 +1035,7 @@ function renderMobPanel(){
   // draw previews in plantilla panel
   if(_activeTab==='plantilla'){
     requestAnimationFrame(()=>{
-      ['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia'].forEach(k=>{
+      ['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista'].forEach(k=>{
         const c=document.getElementById('mtp-'+k);if(!c)return;
         drawPreviewOnCanvas(c,k);
       });
