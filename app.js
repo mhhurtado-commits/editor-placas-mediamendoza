@@ -1529,3 +1529,4 @@ window.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
 });
 window.addEventListener('load',init);
+
