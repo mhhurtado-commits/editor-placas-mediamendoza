@@ -283,4 +283,110 @@
         <div class="togrow" style="margin-top:8px">
           <span style="font-size:.8rem;color:var(--g80)">Sombra en texto</span>
           <label class="toggle"><input type="checkbox" id="cShadow" onchange="S.cShadow=this.checked;snapShot();render()"><span class="togslide"></span></label>
-  
+        </div>
+      </div>
+    </div>
+
+    <!-- OVERLAY -->
+    <div class="acc-item normal-only">
+      <div class="acc-head" onclick="toggleAcc(this)">
+        <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Capa de color</span>
+        <span class="acc-icon">▼</span>
+      </div>
+      <div class="acc-body">
+        <div class="togrow" style="margin-top:4px">
+          <span style="font-size:.8rem;color:var(--g80)">Activar capa</span>
+          <label class="toggle"><input type="checkbox" id="ovTog" onchange="render()"><span class="togslide"></span></label>
+        </div>
+        <label class="fl">Color</label>
+        <div class="swatches">
+          <input type="color" id="ovCol" value="#000000" oninput="S.ovCol=this.value;render()">
+          <div class="sw on" style="background:#000" onclick="setSw('ovCol','#000000',this)"></div>
+          <div class="sw" style="background:#1a1a1a" onclick="setSw('ovCol','#1a1a1a',this)"></div>
+          <div class="sw" style="background:#a6ce39" onclick="setSw('ovCol','#a6ce39',this)"></div>
+          <div class="sw" style="background:#fff;border-color:#ccc" onclick="setSw('ovCol','#ffffff',this)"></div>
+        </div>
+        <label class="fl">Opacidad <span class="rval" id="rv-ovOp">50%</span></label>
+        <div class="rrow"><input type="range" id="r-ovOp" min="0" max="100" value="50" oninput="updR('ovOp',this)"></div>
+      </div>
+    </div>
+
+    <!-- LOGO -->
+    <div class="acc-item normal-only">
+      <div class="acc-head" onclick="toggleAcc(this)">
+        <span style="display:flex;align-items:center;gap:7px"><span class="acc-label-dot"></span>Logo</span>
+        <span class="acc-icon">▼</span>
+      </div>
+      <div class="acc-body">
+        <div class="el-actions">
+          <span>Posición del logo</span>
+          <button class="btn-reset" onclick="resetElPos('logo')" title="Restablecer posición">↺ Reset</button>
+        </div>
+        <div class="align-bar">
+          <button onclick="alignEl('logo','l')"  title="Izquierda">⇤</button>
+          <button onclick="alignEl('logo','ch')" title="Centrar horizontal">↔</button>
+          <button onclick="alignEl('logo','r')"  title="Derecha">⇥</button>
+          <button onclick="alignEl('logo','t')"  title="Arriba">⇡</button>
+          <button onclick="alignEl('logo','cv')" title="Centrar vertical">↕</button>
+          <button onclick="alignEl('logo','b')"  title="Abajo">⇣</button>
+        </div>
+        <label class="uplbl" for="logoUp">📁 Cambiar logo</label>
+        <input type="file" id="logoUp" accept="image/*" onchange="loadLogo(event)">
+        <label class="fl">Opacidad <span class="rval" id="rv-lOp">100%</span></label>
+        <div class="rrow"><input type="range" id="r-lOp" min="10" max="100" value="100" oninput="updR('lOp',this)"></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- TAB BAR mobile -->
+  <nav class="mob-tabbar" id="mobTabbar">
+    <button class="mob-tab" data-key="noticia" onclick="mobTab('noticia',this)"  ><span class="ti">📰</span>Noticia</button>
+    <button class="mob-tab" data-key="plantilla" onclick="mobTab('plantilla',this)"><span class="ti">🎨</span>Plantilla</button>
+    <button class="mob-tab" data-key="imagen" onclick="mobTab('imagen',this)"   ><span class="ti">🖼</span>Imagen</button>
+    <button class="mob-tab" data-key="titulo" onclick="mobTab('titulo',this)"   ><span class="ti">✏️</span>Título</button>
+    <button class="mob-tab" data-key="categoria" onclick="mobTab('categoria',this)"><span class="ti">🏷</span>Categoría</button>
+    <button class="mob-tab" data-key="capa" onclick="mobTab('capa',this)"     ><span class="ti">🌈</span>Capa</button>
+    <button class="mob-tab" data-key="logo" onclick="mobTab('logo',this)"     ><span class="ti">⭐</span>Logo</button>
+  </nav>
+
+  <!-- PANEL mobile (contenido dinámico) -->
+  <div class="mob-panel" id="mobPanel">
+    <div class="mob-panel-inner" id="mobPanelInner"></div>
+  </div>
+
+  <!-- CANVAS -->
+  <main class="canvas-area" id="canvasArea">
+    <div class="canvas-wrap" id="cw">
+      <canvas id="mc"></canvas>
+      <div class="lov" id="lov" style="display:none"><div class="spin"></div></div>
+    </div>
+  </main>
+
+</div>
+
+<!-- EXPORT BAR -->
+<footer class="expbar">
+  <span class="exp-lbl" id="fmtLbl">Instagram Cuadrado — 1080×1080</span>
+  <button class="btn btn-clr" onclick="clearAll()">🗑 Limpiar</button>
+  <button class="btn btn-o" onclick="exportImg('copy')">📋 Copiar</button>
+  <button class="btn btn-o" onclick="exportAllFormats()" title="Descargar todos los formatos">⬇ Todos</button>
+  <button class="btn btn-g" onclick="exportImg('download')">⬇ Descargar</button>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+
+
+<!-- Inputs hidden para modos especiales desktop -->
+<input type="file" id="coll0" accept="image/*" style="display:none" onchange="loadCollageImg(event,0)">
+<input type="file" id="coll1" accept="image/*" style="display:none" onchange="loadCollageImg(event,1)">
+<input type="file" id="coll2" accept="image/*" style="display:none" onchange="loadCollageImg(event,2)">
+<input type="file" id="coll3" accept="image/*" style="display:none" onchange="loadCollageImg(event,3)">
+<input type="file" id="fotoImgUp" accept="image/*" style="display:none" onchange="loadFotoImg(event)">
+<input type="file" id="bgImgUp2" accept="image/*" style="display:none" onchange="loadLocalImg(event)">
+<input type="file" id="textualBgUp" accept="image/*" style="display:none" onchange="loadLocalImg(event)">
+
+</body>
+<script src="app.js"></script>
+</html>
