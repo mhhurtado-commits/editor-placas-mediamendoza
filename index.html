@@ -63,20 +63,29 @@
 
     <!-- PANEL MODO TEXTUAL -->
     <div id="special-panel-textual" class="special-only mode-section">
-      <label class="fl">Texto de la cita</label>
-      <textarea id="quoteIn" rows="4" placeholder="Escribí el textual aquí..." oninput="S.quote=this.value;render()"></textarea>
+      <label class="fl">Texto <span style="font-size:.72rem;color:var(--g60)">(editá también sobre el canvas)</span></label>
+      <textarea id="quoteIn" rows="3" placeholder="Escribí el textual aquí..." oninput="S.quote=this.value;ELS.title._textualInit=null;render()"></textarea>
       <label class="fl">Autor / Fuente</label>
       <input type="text" id="quoteAuthorIn" placeholder="Nombre, cargo..." oninput="S.quoteAuthor=this.value;render()">
-      <label class="fl" style="margin-top:10px">Estilo de fondo</label>
-      <div style="display:flex;gap:6px;margin:4px 0 10px">
-        <div class="tpl-btn on" id="qs-verde"   onclick="S.quoteStyle='verde';  setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Verde MM</div>
-        <div class="tpl-btn"   id="qs-negro"    onclick="S.quoteStyle='negro';  setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Negro</div>
-        <div class="tpl-btn"   id="qs-blanco"   onclick="S.quoteStyle='blanco'; setQS(this)" style="flex:1;padding:6px 2px;font-size:.75rem">Blanco</div>
+      <label class="fl" style="margin-top:8px">Color del panel</label>
+      <div style="display:flex;gap:5px;margin:4px 0 8px">
+        <div class="tpl-btn on" id="qs-verde"  onclick="S.quoteStyle='verde'; setQS(this)" style="flex:1;padding:5px 2px;font-size:.72rem">Verde MM</div>
+        <div class="tpl-btn"   id="qs-negro"   onclick="S.quoteStyle='negro'; setQS(this)" style="flex:1;padding:5px 2px;font-size:.72rem">Negro</div>
+        <div class="tpl-btn"   id="qs-blanco"  onclick="S.quoteStyle='blanco';setQS(this)" style="flex:1;padding:5px 2px;font-size:.72rem">Blanco</div>
       </div>
-      <label class="fl">Imagen de fondo <span style="font-size:.72rem;color:var(--g60)">(opcional — aplica overlay de color)</span></label>
-      <button class="uplbl" onclick="document.getElementById('textualBgUp').click()" style="cursor:pointer;display:block;width:100%;text-align:left;margin-top:4px">📁 Subir imagen de fondo</button>
-
-      <button class="btn-reset" onclick="S.bgImg=null;render()" style="margin-top:6px;width:100%;text-align:center">✕ Quitar imagen de fondo</button>
+      <label class="fl">Posición del panel</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:4px 0 8px">
+        <div class="tpl-btn on" id="qp-left"   onclick="S.quotePos='left';  setQP(this);ELS.title._textualInit=null;render()" style="padding:5px;font-size:.72rem">◀ Izquierda</div>
+        <div class="tpl-btn"   id="qp-right"   onclick="S.quotePos='right'; setQP(this);ELS.title._textualInit=null;render()" style="padding:5px;font-size:.72rem">Derecha ▶</div>
+        <div class="tpl-btn"   id="qp-top"     onclick="S.quotePos='top';   setQP(this);ELS.title._textualInit=null;render()" style="padding:5px;font-size:.72rem">▲ Arriba</div>
+        <div class="tpl-btn"   id="qp-bottom"  onclick="S.quotePos='bottom';setQP(this);ELS.title._textualInit=null;render()" style="padding:5px;font-size:.72rem">Abajo ▼</div>
+      </div>
+      <label class="fl">Tamaño del panel <span class="rval" id="rv-quoteSplit">50%</span></label>
+      <div class="rrow"><input type="range" id="r-quoteSplit" min="30" max="70" value="50"
+        oninput="S.quoteSplit=this.value/100;document.getElementById('rv-quoteSplit').textContent=this.value+'%';ELS.title._textualInit=null;render()"></div>
+      <label class="fl" style="margin-top:6px">Foto de fondo <span style="font-size:.72rem;color:var(--g60)">(opcional)</span></label>
+      <button class="uplbl" onclick="document.getElementById('textualBgUp').click()" style="cursor:pointer;display:block;width:100%;text-align:left">📁 Subir foto de fondo</button>
+      <button class="btn-reset" onclick="S.bgImg=null;render()" style="margin-top:4px;width:100%;text-align:center">✕ Quitar foto</button>
     </div>
 
     <!-- PANEL MODO FOTO CÍRCULO -->
@@ -90,15 +99,16 @@
       <label class="fl" style="margin-top:10px">Foto en círculo (persona)</label>
       <button class="uplbl" onclick="document.getElementById('fotoImgUp').click()" style="cursor:pointer;display:block;width:100%;text-align:left">📁 Subir foto de la persona</button>
 
-      <label class="fl" style="margin-top:8px">Tamaño <span class="rval" id="rv-fotoSize">28%</span></label>
-      <div class="rrow"><input type="range" id="r-fotoSize" min="10" max="55" value="28"
-        oninput="S.fotoSize=this.value/100;document.getElementById('rv-fotoSize').textContent=this.value+'%';render()"></div>
-      <label class="fl">Posición horizontal <span class="rval" id="rv-fotoX">72%</span></label>
-      <div class="rrow"><input type="range" id="r-fotoX" min="5" max="95" value="72"
-        oninput="S.fotoX=this.value/100;document.getElementById('rv-fotoX').textContent=this.value+'%';render()"></div>
-      <label class="fl">Posición vertical <span class="rval" id="rv-fotoY">18%</span></label>
-      <div class="rrow"><input type="range" id="r-fotoY" min="5" max="90" value="18"
-        oninput="S.fotoY=this.value/100;document.getElementById('rv-fotoY').textContent=this.value+'%';render()"></div>
+      <div style="background:var(--g10);border-radius:6px;padding:7px 10px;margin:8px 0;font-size:.76rem;color:var(--g70)">
+        🖱️ <strong>Arrastrá y redimensionás</strong> la foto directamente sobre el canvas.
+      </div>
+      <label class="fl">Forma del contenedor</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:4px 0 10px">
+        <div class="tpl-btn on" id="fs-circle"  onclick="S.fotoShape='circle'; setFS(this)" style="padding:6px 2px;font-size:.8rem">⬤</div>
+        <div class="tpl-btn"   id="fs-square"   onclick="S.fotoShape='square'; setFS(this)" style="padding:6px 2px;font-size:.8rem">⬛</div>
+        <div class="tpl-btn"   id="fs-diamond"  onclick="S.fotoShape='diamond';setFS(this)" style="padding:6px 2px;font-size:.8rem">◆</div>
+        <div class="tpl-btn"   id="fs-hexagon"  onclick="S.fotoShape='hexagon';setFS(this)" style="padding:6px 2px;font-size:.8rem">⬡</div>
+      </div>
       <label class="fl">Color del borde</label>
       <div class="swatches">
         <input type="color" value="#a6ce39" oninput="S.fotoBorder=this.value;render()">
@@ -177,7 +187,10 @@
           <div class="tpl-btn"   onclick="setTpl('economia')"    id="tpl-economia">   <canvas class="tpl-prev" id="tp-economia"></canvas>   <div class="tpl-name">Economía</div></div>
           <div class="tpl-btn"   onclick="setTpl('franja')"      id="tpl-franja">     <canvas class="tpl-prev" id="tp-franja"></canvas>     <div class="tpl-name">Franja</div></div>
           <div class="tpl-btn"   onclick="setTpl('titular')"     id="tpl-titular">    <canvas class="tpl-prev" id="tp-titular"></canvas>    <div class="tpl-name">Titular</div></div>
-          <div class="tpl-btn"   onclick="setTpl('minimalista')" id="tpl-minimalista"><canvas class="tpl-prev" id="tp-minimalista"></canvas><div class="tpl-name">Minimalista</div></div>
+          <div class="tpl-btn"   onclick="setTpl('minimalista')"   id="tpl-minimalista">  <canvas class="tpl-prev" id="tp-minimalista"></canvas>  <div class="tpl-name">Minimalista</div></div>
+          <div class="tpl-btn"   onclick="setTpl('policialesrojo')" id="tpl-policialesrojo"><canvas class="tpl-prev" id="tp-policialesrojo"></canvas><div class="tpl-name">Policiales 🔴</div></div>
+          <div class="tpl-btn"   onclick="setTpl('franjarojo')"     id="tpl-franjarojo">    <canvas class="tpl-prev" id="tp-franjarojo"></canvas>    <div class="tpl-name">Franja 🔴</div></div>
+          <div class="tpl-btn"   onclick="setTpl('urgenterojo')"    id="tpl-urgenterojo">   <canvas class="tpl-prev" id="tp-urgenterojo"></canvas>   <div class="tpl-name">Urgente 🔴</div></div>
         </div>
       </div>
     </div>
