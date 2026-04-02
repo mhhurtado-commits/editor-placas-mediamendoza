@@ -1384,6 +1384,7 @@ const MOB_PANELS = {
       <input type="url" id="m-urlIn" placeholder="https://mediamendoza.com/..." value="${document.getElementById('urlIn').value}">
       <button class="urlbtn" onclick="mobFetch()">→</button>
     </div>
+    <button class="btn btn-wa" onclick="openWAModal()" style="width:100%;margin:6px 0 2px;padding:9px;border-radius:7px;font-size:.82rem;font-weight:700;border:none;cursor:pointer;background:#25d366;color:#fff">💬 Generar mensaje WhatsApp</button>
     <label class="fl">Título</label>
     <textarea id="m-titIn" rows="2">${S.title}</textarea>
     <label class="fl">Categoría</label>
@@ -1595,6 +1596,121 @@ function syncSlider(key, val){
   if(el) el.value=val;
   const rv=document.getElementById('rv-'+key);
   if(rv&&RMAP[key]) rv.textContent=RMAP[key].s(+val);
+}
+
+// ══════════════════════════════════════════
+// GENERADOR DE MENSAJES WHATSAPP
+// ══════════════════════════════════════════
+
+const WA_PROMPT = `Sos el Editor de Redes Sociales de Media Mendoza, un diario digital del sur mendocino. Tu objetivo es convertir notas periodísticas en mensajes atractivos, claros y optimizados para WhatsApp.
+
+TONO: Cordial, informativo, profesional pero cercano al vecino mendocino. Español rioplatense (usá "vos", "tenés", "leé").
+
+REGLAS DE ORO:
+1. No inventar datos. No completar información que no esté en el texto de entrada.
+2. Solo incluir el link si el usuario lo proporciona. Prohibido inventar URLs.
+3. Identificar claramente si la noticia es de San Rafael, General Alvear, Malargüe u otro lugar.
+4. Para el mensaje de GRUPO: crear un gancho que genere tensión/curiosidad sin revelar el desenlace. Máximo 3 líneas antes del link.
+5. Longitud máxima: Grupo = 8 líneas totales. Canal = 12 líneas totales.
+
+FORMATO DE SALIDA — responder SOLO con JSON válido, sin texto extra, sin backticks:
+{
+  "grupo": "mensaje completo para grupo",
+  "canal": "mensaje completo para canal"
+}
+
+ESTRUCTURA GRUPO (Estilo Alerta):
+- Encabezado: [emoji categoría] *CIUDAD: TITULAR GANCHO EN MAYÚSCULAS*
+- Bajada: 2-3 líneas con el dato más impactante, SIN revelar el desenlace
+- CTA: 🔗 *LEÉ LA NOTA COMPLETA:* 👉 [URL]
+- Cierre: *¡Sumate!* 📱 https://bit.ly/mediamendoza-grupo 📣 https://bit.ly/mediamendoza-canal
+- Firma: *📰 Media Mendoza - Noticias confiables del sur mendocino*
+
+ESTRUCTURA CANAL (Estilo Resumen):
+- Encabezado: [emoji] *CIUDAD: TITULAR EN MAYÚSCULAS*
+- Bullets con: • Qué pasó • Quiénes intervienen • Dónde/Cuándo • Situación actual
+- CTA: 🔗 *MÁS DETALLES:* 👉 [URL]
+- Firma: *📰 Media Mendoza - Noticias confiables del sur mendocino*`;
+
+let _waTab = 'grupo';
+let _waMessages = {grupo:'', canal:''};
+let _waGenerating = false;
+
+function openWAModal(){
+  if(!S.title){showToast('Primero cargá una nota con título');return;}
+  document.getElementById('waModalBg').classList.add('open');
+  waGenerate();
+}
+function closeWAModal(){
+  document.getElementById('waModalBg').classList.remove('open');
+}
+function waSetTab(tab){
+  _waTab=tab;
+  document.querySelectorAll('.wa-tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('wa-tab-'+tab).classList.add('on');
+  const msg=document.getElementById('waMsg');
+  if(_waMessages[tab]){
+    msg.classList.remove('loading');
+    msg.textContent=_waMessages[tab];
+  } else {
+    msg.classList.add('loading');
+    msg.textContent='Generando...';
+  }
+}
+function waCopy(){
+  const text=_waMessages[_waTab];
+  if(!text){showToast('Esperá que termine de generar');return;}
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast('✅ Mensaje copiado al portapapeles');
+  }).catch(()=>{
+    // fallback
+    const ta=document.createElement('textarea');
+    ta.value=text;document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);
+    showToast('✅ Mensaje copiado');
+  });
+}
+async function waGenerate(){
+  if(_waGenerating)return;
+  _waGenerating=true;
+  _waMessages={grupo:'',canal:''};
+  const msg=document.getElementById('waMsg');
+  msg.classList.add('loading');
+  msg.textContent='Generando mensajes con IA...';
+
+  const url=document.getElementById('urlIn').value.trim();
+  const titulo=S.title||'';
+  const categoria=S.cat||'';
+  const extra=document.getElementById('waExtraInput')?.value.trim()||'';
+
+  const entrada=`Título: ${titulo}
+Categoría: ${categoria}${url?'\nURL: '+url:''}${extra?'\nContexto adicional: '+extra:''}`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:WA_PROMPT,
+        messages:[{role:'user',content:'Generá los dos mensajes para esta nota:\n\n'+entrada}]
+      })
+    });
+    const data=await res.json();
+    const raw=data.content?.find(b=>b.type==='text')?.text||'{}';
+    const clean=raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
+    const parsed=JSON.parse(clean);
+    _waMessages.grupo=parsed.grupo||'No se pudo generar el mensaje de grupo.';
+    _waMessages.canal=parsed.canal||'No se pudo generar el mensaje de canal.';
+  }catch(e){
+    _waMessages.grupo='Error al generar. Verificá que la nota tenga título cargado.';
+    _waMessages.canal=_waMessages.grupo;
+  }
+
+  _waGenerating=false;
+  msg.classList.remove('loading');
+  msg.textContent=_waMessages[_waTab];
 }
 
 // ── INIT ──
