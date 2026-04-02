@@ -14,6 +14,7 @@ let ELS={
   title:{x:null,y:null,w:null,h:null,visible:true},
   cat:  {x:null,y:null,w:null,h:null,visible:true},
   logo: {x:null,y:null,w:null,h:null,visible:true},
+  foto: {x:null,y:null,w:null,h:null,visible:true},
 };
 
 let S={
@@ -36,9 +37,13 @@ let S={
   quoteStyle:'verde', // 'verde'|'negro'|'blanco'
   // ── modo foto ──
   fotoImg:null,   // imagen del círculo
-  fotoSize:0.28,  // fracción del ancho
+  fotoShape:'circle', // 'circle'|'square'|'diamond'
   fotoX:0.72, fotoY:0.18, // posición centro (fracción)
+  fotoSize:0.28,  // fracción del ancho
   fotoBorder:'#a6ce39',
+  // ── modo textual divisor ──
+  quoteSplit:0.5,  // fracción del área de color (0.3–0.7)
+  quotePos:'left', // 'left'|'right'|'top'|'bottom'
   // ── modo collage ──
   collageImgs:[null,null,null,null], // hasta 4 imágenes
   collageLayout:'2h',  // layouts: 2h, 2v, 3t, 3b, 3l, 3r, 4
@@ -145,6 +150,7 @@ function resetEls(){
     title:{x:null,y:null,w:null,h:null,visible:true},
     cat:  {x:null,y:null,w:null,h:null,visible:true},
     logo: {x:null,y:null,w:null,h:null,visible:true},
+    foto: {x:null,y:null,w:null,h:null,visible:true},
   };
 }
 
@@ -175,6 +181,10 @@ function defaultPos(key){
     const lh=Math.round(lw*(S.logoImg.height/S.logoImg.width));
     if(S.tpl==='normal')return{x:Math.round((W-lw)/2),y:H-lh-pad,w:lw,h:lh};
     return{x:W-lw-pad,y:pad,w:lw,h:lh};
+  }
+  if(key==='foto'){
+    const fs=Math.round(W*S.fotoSize);
+    return{x:Math.round(W*S.fotoX-fs/2),y:Math.round(H*S.fotoY-fs/2),w:fs,h:fs};
   }
 }
 function ensurePos(key){
@@ -218,6 +228,24 @@ const TPLS={
   urgente(W,H){ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,Math.round(H*.055));const g=ctx.createLinearGradient(0,H*.4,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.88)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);},
   // Economía: igual que banda pero con acento verde corporativo más grueso
   economia(W,H){const bh=Math.round(H*.34);ctx.fillStyle='rgba(0,0,0,.90)';ctx.fillRect(0,H-bh,W,bh);ctx.fillStyle='#a6ce39';ctx.fillRect(0,H-bh,W,Math.round(H*.03));},
+  // Policiales Rojo — igual a policiales pero acento rojo más grueso
+  policialesrojo(W,H){const bh=Math.round(H*.34);ctx.fillStyle='rgba(0,0,0,.92)';ctx.fillRect(0,H-bh,W,bh);ctx.fillStyle='#c62828';ctx.fillRect(0,H-bh,W,Math.round(H*.03));},
+  // Franja Rojo — igual a franja pero acento rojo
+  franjarojo(W,H){
+    const g=ctx.createLinearGradient(0,H*.42,0,H);
+    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.86)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#c62828';ctx.fillRect(0,0,Math.round(W*.038),H);
+    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(Math.round(W*.038),0,Math.round(W*.004),H);
+  },
+  // Urgente Rojo — banda roja superior más prominente
+  urgenterojo(W,H){
+    ctx.fillStyle='#c62828';ctx.fillRect(0,0,W,Math.round(H*.072));
+    ctx.fillStyle='rgba(200,0,0,.15)';ctx.fillRect(0,0,W,H);
+    const g=ctx.createLinearGradient(0,H*.4,0,H);
+    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.88)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  },
   // Franja — borde izquierdo verde grueso, degradado negro inferior, estilo Reuters/BBC
   franja(W,H){
     const g=ctx.createLinearGradient(0,H*.42,0,H);
@@ -271,8 +299,15 @@ function setMode(m){
 }
 function setQS(el){
   document.querySelectorAll('[id^="qs-"]').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  snapShot();render();
+  el.classList.add('on');snapShot();render();
+}
+function setQP(el){
+  document.querySelectorAll('[id^="qp-"]').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');snapShot();
+}
+function setFS(el){
+  document.querySelectorAll('[id^="fs-"]').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');snapShot();render();
 }
 function setCL(el){
   document.querySelectorAll('[id^="cl-"]').forEach(b=>b.classList.remove('on'));
@@ -290,114 +325,156 @@ function setCL(el){
 // ── RENDER TEXTUAL ──
 function renderTextual(W,H){
   const style=S.quoteStyle;
+  const pos=S.quotePos;   // 'left'|'right'|'top'|'bottom'
+  const sp=S.quoteSplit;  // fracción del panel de color
   const pad=Math.round(W*.05);
 
-  // ── FONDO ──
+  // ── Calcular rects: imgRect y colorRect ──
+  let ir={x:0,y:0,w:W,h:H}, cr={x:0,y:0,w:W,h:H};
+  if(pos==='left'){
+    cr={x:0,y:0,w:Math.round(W*sp),h:H};
+    ir={x:Math.round(W*sp),y:0,w:W-Math.round(W*sp),h:H};
+  } else if(pos==='right'){
+    ir={x:0,y:0,w:Math.round(W*(1-sp)),h:H};
+    cr={x:Math.round(W*(1-sp)),y:0,w:W-Math.round(W*(1-sp)),h:H};
+  } else if(pos==='top'){
+    cr={x:0,y:0,w:W,h:Math.round(H*sp)};
+    ir={x:0,y:Math.round(H*sp),w:W,h:H-Math.round(H*sp)};
+  } else { // bottom
+    ir={x:0,y:0,w:W,h:Math.round(H*(1-sp))};
+    cr={x:0,y:Math.round(H*(1-sp)),w:W,h:H-Math.round(H*(1-sp))};
+  }
+
+  // ── Dibujar imagen nítida en ir ──
   if(S.bgImg){
-    // Imagen de fondo con oscurecimiento
-    const img=S.bgImg,ir=img.width/img.height,cr=W/H;
+    ctx.save();ctx.beginPath();ctx.rect(ir.x,ir.y,ir.w,ir.h);ctx.clip();
+    const img=S.bgImg,ira=img.width/img.height,cra=ir.w/ir.h;
     let sx,sy,sw,sh;
-    if(ir>cr){sh=img.height;sw=sh*cr;sx=(img.width-sw)/2;sy=0;}
-    else{sw=img.width;sh=sw/cr;sx=0;sy=(img.height-sh)/2;}
-    ctx.drawImage(img,sx,sy,sw,sh,0,0,W,H);
-    // Overlay según estilo
-    if(style==='verde'){
-      ctx.fillStyle='rgba(166,206,57,.82)';ctx.fillRect(0,0,W,H);
-    } else if(style==='negro'){
-      ctx.fillStyle='rgba(10,10,10,.88)';ctx.fillRect(0,0,W,H);
-    } else {
-      ctx.fillStyle='rgba(245,249,232,.90)';ctx.fillRect(0,0,W,H);
-    }
+    if(ira>cra){sh=img.height;sw=sh*cra;sx=(img.width-sw)/2;sy=0;}
+    else{sw=img.width;sh=sw/cra;sx=0;sy=(img.height-sh)/2;}
+    ctx.drawImage(img,sx,sy,sw,sh,ir.x,ir.y,ir.w,ir.h);
+    ctx.restore();
   } else {
-    // Sin imagen — fondo sólido
-    if(style==='verde'){
-      ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,H);
-      ctx.save();ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=W*.018;
-      for(let i=-H;i<W+H;i+=Math.round(W*.07)){
-        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
-      }
-      ctx.restore();
-    } else if(style==='negro'){
-      ctx.fillStyle='#111111';ctx.fillRect(0,0,W,H);
-    } else {
-      ctx.fillStyle='#f5f9e8';ctx.fillRect(0,0,W,H);
-    }
+    ctx.fillStyle='#2a2a2a';ctx.fillRect(ir.x,ir.y,ir.w,ir.h);
+    ctx.fillStyle='rgba(255,255,255,.3)';
+    ctx.font=`${Math.round(Math.min(ir.w,ir.h)*.07)}px Montserrat,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('Foto de fondo',ir.x+ir.w/2,ir.y+ir.h/2);ctx.textAlign='left';
   }
 
-  // ── DETALLES ESTRUCTURALES ──
-  if(style==='negro'){
-    ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,W,Math.round(H*.008));
-    ctx.fillStyle='#a6ce39';ctx.fillRect(0,H-Math.round(H*.008),W,Math.round(H*.008));
-  } else if(style==='blanco'){
-    ctx.fillStyle='#a6ce39';ctx.fillRect(0,0,Math.round(W*.012),H);
-    ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(Math.round(W*.012),0,Math.round(W*.003),H);
-  }
+  // ── Dibujar panel de color en cr ──
+  const colMap={verde:'#a6ce39',negro:'#111111',blanco:'#f5f9e8'};
+  ctx.fillStyle=colMap[style]||'#a6ce39';
+  ctx.fillRect(cr.x,cr.y,cr.w,cr.h);
+  // Detalle estructural en el borde entre panels
+  ctx.fillStyle='rgba(0,0,0,.18)';
+  if(pos==='left')  ctx.fillRect(cr.x+cr.w-3,cr.y,3,cr.h);
+  if(pos==='right') ctx.fillRect(cr.x,cr.y,3,cr.h);
+  if(pos==='top')   ctx.fillRect(cr.x,cr.y+cr.h-3,cr.w,3);
+  if(pos==='bottom')ctx.fillRect(cr.x,cr.y,cr.w,3);
+  // Acento verde en borde exterior del panel color
+  const isVerde=style==='verde',isBlanco=style==='blanco';
+  const accentC=isVerde?'rgba(0,0,0,.2)':'#a6ce39';
+  ctx.fillStyle=isVerde?'rgba(0,0,0,.12)':'#a6ce39';
+  if(pos==='left')  ctx.fillRect(cr.x,cr.y,4,cr.h);
+  if(pos==='right') ctx.fillRect(cr.x+cr.w-4,cr.y,4,cr.h);
+  if(pos==='top')   ctx.fillRect(cr.x,cr.y,cr.w,4);
+  if(pos==='bottom')ctx.fillRect(cr.x,cr.y+cr.h-4,cr.w,4);
 
-  // ── LOGO ──
+  // ── Logo en panel color ──
+  const textCol=isVerde||isBlanco?'#111111':'#ffffff';
   if(S.logoImg){
-    const lw=Math.round(W*.22);
+    const lw=Math.round(cr.w*.55);
     const lh=Math.round(lw*(S.logoImg.height/S.logoImg.width));
     ctx.save();
     if(style==='verde')ctx.filter='brightness(0) invert(1)';
     else if(style==='blanco')ctx.filter='brightness(0)';
     ctx.globalAlpha=S.lOp;
-    ctx.drawImage(S.logoImg,pad,pad,lw,lh);
+    ctx.drawImage(S.logoImg,cr.x+Math.round(cr.w*.06),cr.y+Math.round(cr.h*.05),lw,lh);
     ctx.filter='none';ctx.restore();
   }
 
-  if(!S.quote)return;
-  const isVerde=style==='verde';
-  const isBlanco=style==='blanco';
-  const textCol=isVerde||isBlanco?'#111111':'#ffffff';
-  const accentCol=isVerde?'rgba(0,0,0,.25)':'#a6ce39';
-
-  // ── COMILLAS ──
-  const qsz=Math.round(W*.22);
+  // ── Comillas decorativas ──
+  const qsz=Math.round(cr.w*.35);
   ctx.save();
   ctx.font=`900 ${qsz}px 'BebasNeue',sans-serif`;
-  ctx.fillStyle=isVerde||isBlanco?'rgba(0,0,0,.1)':'rgba(166,206,57,.22)';
+  ctx.fillStyle=isVerde||isBlanco?'rgba(0,0,0,.08)':'rgba(166,206,57,.18)';
   ctx.textBaseline='top';
-  ctx.fillText('"',Math.round(W*.04),Math.round(H*.1));
+  ctx.fillText('"',cr.x+Math.round(cr.w*.04),cr.y+Math.round(cr.h*.18));
   ctx.restore();
 
-  // ── TEXTO DE LA CITA ──
-  const aw=Math.round(W*.82);
-  const qpad=Math.round(W*.09);
-  let sz=Math.max(16,Math.round(W*.065));
-  let lines,lh,bh;
-  for(let i=0;i<25;i++){
-    ctx.font=`400 ${sz}px 'BebasNeue',sans-serif`;
-    lines=wrapText(ctx,S.quote.toUpperCase(),aw);
-    lh=sz*1.18;bh=lines.length*lh;
-    if(bh<=H*.52||sz<=16)break;
-    sz=Math.max(16,Math.round(sz*.88));
+  // ── Texto de la cita — usando ELS.title como elemento editable ──
+  ensurePos('title');
+  // Forzar posición dentro del panel color si aún no fue movido
+  if(ELS.title._textualInit!==pos+sp){
+    const tpad=Math.round(cr.w*.1);
+    ELS.title.x=cr.x+tpad;
+    ELS.title.y=cr.y+Math.round(cr.h*.32);
+    ELS.title.w=cr.w-tpad*2;
+    ELS.title.h=Math.round(cr.h*.45);
+    ELS.title._textualInit=pos+sp;
   }
-  const qy=Math.round(H*.27);
+  const el=ELS.title;
+  const aw=el.w-Math.round(el.w*.05)*2;
+  let sz=Math.max(12,Math.round(el.h*.32));
+  let lines,lh,bh;
+  for(let i=0;i<20;i++){
+    ctx.font=`400 ${sz}px 'BebasNeue',sans-serif`;
+    lines=wrapText(ctx,S.quote?S.quote.toUpperCase():'ESCRIBÍ LA CITA...',aw);
+    lh=sz*1.18;bh=lines.length*lh;
+    if(bh<=el.h*.95||sz<=12)break;
+    sz=Math.max(12,Math.round(sz*.88));
+  }
   ctx.save();
   ctx.textBaseline='top';ctx.textAlign='left';
-  ctx.fillStyle=textCol;
+  ctx.fillStyle=S.quote?textCol:'rgba(0,0,0,.25)';
   ctx.font=`400 ${sz}px 'BebasNeue',sans-serif`;
-  lines.forEach((l,i)=>ctx.fillText(l,qpad,qy+i*lh));
+  const ty=el.y+(el.h-bh)/2;
+  lines.forEach((l,i)=>ctx.fillText(l,el.x+Math.round(el.w*.05)*1,ty+i*lh));
   ctx.restore();
 
-  // ── AUTOR ──
+  // ── Autor ──
   if(S.quoteAuthor){
-    const lineY=qy+bh+Math.round(H*.04);
+    const ay=el.y+el.h+Math.round(cr.h*.03);
     ctx.save();
-    ctx.strokeStyle=accentCol;ctx.lineWidth=Math.round(W*.004);
-    ctx.beginPath();ctx.moveTo(qpad,lineY);ctx.lineTo(qpad+Math.round(W*.12),lineY);ctx.stroke();
-    const asz=Math.round(W*.032);
-    ctx.font=`700 ${asz}px 'Economica',sans-serif`;
-    ctx.fillStyle=isVerde||isBlanco?'rgba(0,0,0,.65)':'rgba(255,255,255,.7)';
+    ctx.strokeStyle=accentC;ctx.lineWidth=Math.round(cr.w*.005);
+    ctx.beginPath();ctx.moveTo(el.x,ay);ctx.lineTo(el.x+Math.round(cr.w*.15),ay);ctx.stroke();
+    ctx.font=`700 ${Math.round(cr.w*.055)}px 'Economica',sans-serif`;
+    ctx.fillStyle=isVerde||isBlanco?'rgba(0,0,0,.6)':'rgba(255,255,255,.7)';
     ctx.textBaseline='top';
-    ctx.fillText('— '+S.quoteAuthor.toUpperCase(),qpad,lineY+Math.round(H*.025));
+    ctx.fillText('— '+S.quoteAuthor.toUpperCase(),el.x,ay+Math.round(cr.h*.03));
     ctx.restore();
   }
 }
 
-// ── RENDER FOTO CÍRCULO ──
+// ── RENDER FOTO CÍRCULO / FORMA ──
+function drawFotoShape(cx,cy,R,clip){
+  // clip=true: solo trazar path. clip=false: dibujar borde
+  const sh=S.fotoShape;
+  ctx.beginPath();
+  if(sh==='circle'){
+    ctx.arc(cx,cy,R,0,Math.PI*2);
+  } else if(sh==='square'){
+    const r=Math.round(R*.12);
+    const x=cx-R,y=cy-R,s=R*2;
+    ctx.moveTo(x+r,y);ctx.lineTo(x+s-r,y);ctx.quadraticCurveTo(x+s,y,x+s,y+r);
+    ctx.lineTo(x+s,y+s-r);ctx.quadraticCurveTo(x+s,y+s,x+s-r,y+s);
+    ctx.lineTo(x+r,y+s);ctx.quadraticCurveTo(x,y+s,x,y+s-r);
+    ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  } else if(sh==='diamond'){
+    ctx.moveTo(cx,cy-R);ctx.lineTo(cx+R,cy);
+    ctx.lineTo(cx,cy+R);ctx.lineTo(cx-R,cy);ctx.closePath();
+  } else if(sh==='hexagon'){
+    for(let i=0;i<6;i++){
+      const a=Math.PI/180*(60*i-30);
+      i===0?ctx.moveTo(cx+R*Math.cos(a),cy+R*Math.sin(a))
+           :ctx.lineTo(cx+R*Math.cos(a),cy+R*Math.sin(a));
+    }ctx.closePath();
+  }
+}
+
 function renderFoto(W,H){
-  // ── FONDO: imagen de la noticia (bgImg) ──
+  // ── FONDO ──
   if(S.bgImg){
     ctx.save();
     if(S.iBlur>0)ctx.filter=`blur(${S.iBlur}px)`;
@@ -415,46 +492,41 @@ function renderFoto(W,H){
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText('Cargá la imagen de la noticia',W/2,H/2);ctx.textAlign='left';
   }
-  // ── PLANTILLA ──
   (TPLS[S.tpl]||TPLS.normal)(W,H);
   // ── ELEMENTOS NORMALES ──
-  if(ELS.title.x===null)ensurePos('title');
-  if(ELS.cat.x===null)ensurePos('cat');
-  if(ELS.logo.x===null)ensurePos('logo');
+  ensurePos('title');ensurePos('cat');ensurePos('logo');
   drawLogo();drawCat();drawTitle();
-  // ── FOTO CÍRCULO (segunda imagen — la persona) ──
+  // ── FOTO EN FORMA ──
+  ensurePos('foto');
+  const el=ELS.foto;
+  const cx=Math.round(el.x+el.w/2);
+  const cy=Math.round(el.y+el.h/2);
+  const R=Math.round(el.w/2);
   if(!S.fotoImg){
-    // Indicador visual de que falta cargar la foto
-    const R=Math.round(W*S.fotoSize/2);
-    const cx=Math.round(W*S.fotoX),cy=Math.round(H*S.fotoY);
     ctx.save();
     ctx.strokeStyle='rgba(166,206,57,.7)';ctx.lineWidth=Math.round(R*.06);
     ctx.setLineDash([Math.round(R*.15),Math.round(R*.1)]);
-    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+    drawFotoShape(cx,cy,R,true);ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle='rgba(166,206,57,.5)';
-    ctx.font=`${Math.round(R*.32)}px Montserrat,sans-serif`;
+    ctx.font=`${Math.round(R*.3)}px Montserrat,sans-serif`;
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText('+ foto',cx,cy);ctx.textAlign='left';
     ctx.restore();
     return;
   }
-  const R=Math.round(W*S.fotoSize/2);
-  const cx=Math.round(W*S.fotoX);
-  const cy=Math.round(H*S.fotoY);
   ctx.save();
-  // Sombra del círculo
-  ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=Math.round(R*.22);ctx.shadowOffsetY=Math.round(R*.06);
-  // Borde exterior
-  ctx.beginPath();ctx.arc(cx,cy,R+Math.round(R*.07),0,Math.PI*2);
+  // Sombra
+  ctx.shadowColor='rgba(0,0,0,.4)';ctx.shadowBlur=Math.round(R*.2);ctx.shadowOffsetY=Math.round(R*.05);
+  // Borde
+  drawFotoShape(cx,cy,R+Math.round(R*.07),false);
   ctx.fillStyle=S.fotoBorder;ctx.fill();
   ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
-  // Clip y dibujar foto persona
-  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+  // Clip + imagen
+  drawFotoShape(cx,cy,R,true);ctx.clip();
   const fi=S.fotoImg;
   const side=Math.min(fi.width,fi.height);
-  const fsx=(fi.width-side)/2,fsy=(fi.height-side)/2;
-  ctx.drawImage(fi,fsx,fsy,side,side,cx-R,cy-R,R*2,R*2);
+  ctx.drawImage(fi,(fi.width-side)/2,(fi.height-side)/2,side,side,cx-R,cy-R,R*2,R*2);
   ctx.restore();
 }
 
@@ -694,6 +766,17 @@ function drawPreviewOnCanvas(c,k){
       tc.fillStyle='rgba(255,255,255,.93)';tc.fillRect(0,H*.7,W,H*.3);
       tc.fillStyle='#a6ce39';tc.fillRect(0,H*.7,W,H*.009);
     },
+    policialesrojo:()=>{tc.fillStyle='rgba(0,0,0,.92)';tc.fillRect(0,H*.66,W,H*.34);tc.fillStyle='#c62828';tc.fillRect(0,H*.66,W,H*.04);},
+    franjarojo:()=>{
+      const g=tc.createLinearGradient(0,H*.42,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.86)');
+      tc.fillStyle=g;tc.fillRect(0,0,W,H);
+      tc.fillStyle='#c62828';tc.fillRect(0,0,W*.04,H);
+    },
+    urgenterojo:()=>{
+      tc.fillStyle='#c62828';tc.fillRect(0,0,W,H*.08);
+      const g=tc.createLinearGradient(0,H*.4,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.88)');
+      tc.fillStyle=g;tc.fillRect(0,0,W,H);
+    },
   };
   if(ov[k])ov[k]();
   tc.fillStyle='#fff';tc.font=`bold ${Math.round(H*.1)}px BebasNeue,sans-serif`;
@@ -797,7 +880,7 @@ function getHandles(key){
     {x:el.x,       y:el.y+el.h,   id:'sw',type:'corner'},
     {x:el.x+el.w,  y:el.y+el.h,   id:'se',type:'corner'},
   ];
-  if(key!=='logo'){
+  if(key!=='logo'&&key!=='foto'){
     H.push({x:el.x,      y:el.y+el.h/2, id:'w', type:'side'});
     H.push({x:el.x+el.w, y:el.y+el.h/2, id:'e', type:'side'});
   }
@@ -866,7 +949,8 @@ function getHandleHit(pos,key){
   return null;
 }
 function hitEl(pos){
-  const order=S.active?[S.active,...['title','cat','logo'].filter(k=>k!==S.active)]:['title','cat','logo'];
+  const base=S.mode==='foto'?['foto','title','cat','logo']:['title','cat','logo'];
+  const order=S.active?[S.active,...base.filter(k=>k!==S.active)]:base;
   for(const k of order){
     const el=ELS[k];
     if(!el||el.x===null||!el.visible)continue;
@@ -894,7 +978,8 @@ function onDown(e){
     if(hid){
       S.action='resize-'+hid;
       S.resizeStart={pos:{...pos},rect:{...ELS[S.active]},
-        logoAR:S.active==='logo'&&S.logoImg?S.logoImg.width/S.logoImg.height:null};
+        logoAR:S.active==='logo'&&S.logoImg?S.logoImg.width/S.logoImg.height:null,
+        fotoSquare:S.active==='foto'};
       return;
     }
   }
@@ -929,11 +1014,13 @@ function onMove(e){
     const dx=pos.x-rs.pos.x,dy=pos.y-rs.pos.y;
     const MIN=W*.04;
     let{x,y,w,h}=rs.rect;
-    if(rs.logoAR){
-      if(corner==='se'){w=Math.max(MIN,w+dx);h=w/rs.logoAR;}
-      else if(corner==='sw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;h=w/rs.logoAR;}
-      else if(corner==='ne'){w=Math.max(MIN,w+dx);const nh=w/rs.logoAR;y=rs.rect.y+rs.rect.h-nh;h=nh;}
-      else if(corner==='nw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;const nh=w/rs.logoAR;y=rs.rect.y+rs.rect.h-nh;h=nh;}
+    if(rs.logoAR||rs.fotoSquare){
+      // Logo (proporcional) o Foto (siempre cuadrada)
+      const AR=rs.logoAR||1;
+      if(corner==='se'){w=Math.max(MIN,w+dx);h=w/AR;}
+      else if(corner==='sw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;h=w/AR;}
+      else if(corner==='ne'){w=Math.max(MIN,w+dx);const nh=w/AR;y=rs.rect.y+rs.rect.h-nh;h=nh;}
+      else if(corner==='nw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;const nh=w/AR;y=rs.rect.y+rs.rect.h-nh;h=nh;}
     } else {
       if(corner==='se'){w=Math.max(MIN,w+dx);h=Math.max(MIN,h+dy);}
       else if(corner==='sw'){const nw=Math.max(MIN,w-dx);x=rs.rect.x+rs.rect.w-nw;w=nw;h=Math.max(MIN,h+dy);}
@@ -1096,7 +1183,7 @@ function loadLogo(ev){
 
 // ── TEMPLATE PREVIEWS ──
 function drawPreviews(){
-  ['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista'].forEach(k=>{
+  ['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista','policialesrojo','franjarojo','urgenterojo'].forEach(k=>{
     const c=document.getElementById('tp-'+k);
     if(c) drawPreviewOnCanvas(c,k);
   });
@@ -1146,7 +1233,8 @@ function clearAll(){
   const ovTog=document.getElementById('ovTog');
   if(ovTog)ovTog.checked=false;
   S.mode='normal'; S.quote=''; S.quoteAuthor=''; S.quoteStyle='verde';
-  S.fotoImg=null; S.fotoSize=0.28; S.fotoX=0.72; S.fotoY=0.18; S.fotoBorder='#a6ce39';
+  S.fotoImg=null; S.fotoSize=0.28; S.fotoX=0.72; S.fotoY=0.18; S.fotoBorder='#a6ce39'; S.fotoShape='circle';
+  S.quoteSplit=0.5; S.quotePos='left';
   S.collageImgs=[null,null]; S.collageSplit=0.5;
   setMode('normal');
   render(); drawPreviews();
@@ -1235,27 +1323,41 @@ const MOB_PANELS = {
       <textarea id="m-quoteIn" rows="3" placeholder="Textual...">${S.quote}</textarea>
       <label class="fl">Autor / Fuente</label>
       <input type="text" id="m-quoteAuthorIn" placeholder="Nombre, cargo..." value="${S.quoteAuthor}">
-      <label class="fl" style="margin-top:8px">Estilo</label>
-      <div style="display:flex;gap:5px;margin:4px 0">
-        <div class="tpl-btn ${S.quoteStyle==='verde'?'on':''}"  onclick="S.quoteStyle='verde'; render();renderMobPanel()" style="flex:1;font-size:.72rem;padding:5px">Verde MM</div>
-        <div class="tpl-btn ${S.quoteStyle==='negro'?'on':''}"  onclick="S.quoteStyle='negro'; render();renderMobPanel()" style="flex:1;font-size:.72rem;padding:5px">Negro</div>
-        <div class="tpl-btn ${S.quoteStyle==='blanco'?'on':''}" onclick="S.quoteStyle='blanco';render();renderMobPanel()" style="flex:1;font-size:.72rem;padding:5px">Blanco</div>
+      <label class="fl" style="margin-top:8px">Color del panel</label>
+      <div style="display:flex;gap:4px;margin:4px 0 6px">
+        <div class="tpl-btn ${S.quoteStyle==='verde'?'on':''}"  onclick="S.quoteStyle='verde'; render();renderMobPanel()" style="flex:1;font-size:.7rem;padding:5px">Verde MM</div>
+        <div class="tpl-btn ${S.quoteStyle==='negro'?'on':''}"  onclick="S.quoteStyle='negro'; render();renderMobPanel()" style="flex:1;font-size:.7rem;padding:5px">Negro</div>
+        <div class="tpl-btn ${S.quoteStyle==='blanco'?'on':''}" onclick="S.quoteStyle='blanco';render();renderMobPanel()" style="flex:1;font-size:.7rem;padding:5px">Blanco</div>
       </div>
+      <label class="fl">Posición del panel</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:4px 0 6px">
+        <div class="tpl-btn ${S.quotePos==='left'?'on':''}"   onclick="S.quotePos='left';  ELS.title._textualInit=null;render();renderMobPanel()" style="padding:5px;font-size:.7rem">◀ Izq</div>
+        <div class="tpl-btn ${S.quotePos==='right'?'on':''}"  onclick="S.quotePos='right'; ELS.title._textualInit=null;render();renderMobPanel()" style="padding:5px;font-size:.7rem">Der ▶</div>
+        <div class="tpl-btn ${S.quotePos==='top'?'on':''}"    onclick="S.quotePos='top';   ELS.title._textualInit=null;render();renderMobPanel()" style="padding:5px;font-size:.7rem">▲ Arriba</div>
+        <div class="tpl-btn ${S.quotePos==='bottom'?'on':''}" onclick="S.quotePos='bottom';ELS.title._textualInit=null;render();renderMobPanel()" style="padding:5px;font-size:.7rem">Abajo ▼</div>
+      </div>
+      <label class="fl">Tamaño del panel <span class="rval" id="m-rv-qsplit">${Math.round(S.quoteSplit*100)}%</span></label>
+      <div class="rrow"><input type="range" min="30" max="70" value="${Math.round(S.quoteSplit*100)}"
+        oninput="S.quoteSplit=this.value/100;ELS.title._textualInit=null;document.getElementById('m-rv-qsplit').textContent=this.value+'%';render()"></div>
+      <label class="uplbl" for="m-textualBgUp" style="margin-top:6px">📁 Foto de fondo (opcional)</label>
+      <input type="file" id="m-textualBgUp" accept="image/*">
+      <button class="btn-reset" onclick="S.bgImg=null;render()" style="margin-top:4px;width:100%;text-align:center">✕ Quitar foto</button>
     `:''}
     ${S.mode==='foto'?`
       <label class="uplbl" for="m-bgUp2">📁 Imagen de fondo (noticia)</label>
       <input type="file" id="m-bgUp2" accept="image/*">
       <label class="uplbl" for="m-fotoUp" style="margin-top:6px">📁 Foto persona (círculo)</label>
       <input type="file" id="m-fotoUp" accept="image/*">
-      <label class="fl" style="margin-top:6px">Tamaño <span class="rval" id="m-rv-fotoSize">${Math.round(S.fotoSize*100)}%</span></label>
-      <div class="rrow"><input type="range" min="10" max="55" value="${Math.round(S.fotoSize*100)}"
-        oninput="S.fotoSize=this.value/100;document.getElementById('m-rv-fotoSize').textContent=this.value+'%';render()"></div>
-      <label class="fl">Posición H <span class="rval" id="m-rv-fotoX">${Math.round(S.fotoX*100)}%</span></label>
-      <div class="rrow"><input type="range" min="5" max="95" value="${Math.round(S.fotoX*100)}"
-        oninput="S.fotoX=this.value/100;document.getElementById('m-rv-fotoX').textContent=this.value+'%';render()"></div>
-      <label class="fl">Posición V <span class="rval" id="m-rv-fotoY">${Math.round(S.fotoY*100)}%</span></label>
-      <div class="rrow"><input type="range" min="5" max="90" value="${Math.round(S.fotoY*100)}"
-        oninput="S.fotoY=this.value/100;document.getElementById('m-rv-fotoY').textContent=this.value+'%';render()"></div>
+      <div style="background:var(--g10);border-radius:5px;padding:6px 8px;margin:6px 0;font-size:.74rem;color:var(--g70)">
+        👆 Arrastrá y redimensionás la foto sobre el canvas.
+      </div>
+      <label class="fl" style="margin-top:4px">Forma del contenedor</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:4px 0 6px">
+        <div class="tpl-btn ${S.fotoShape==='circle' ?'on':''}" onclick="S.fotoShape='circle'; render();renderMobPanel()" style="padding:5px;font-size:.85rem">⬤</div>
+        <div class="tpl-btn ${S.fotoShape==='square' ?'on':''}" onclick="S.fotoShape='square'; render();renderMobPanel()" style="padding:5px;font-size:.85rem">⬛</div>
+        <div class="tpl-btn ${S.fotoShape==='diamond'?'on':''}" onclick="S.fotoShape='diamond';render();renderMobPanel()" style="padding:5px;font-size:.85rem">◆</div>
+        <div class="tpl-btn ${S.fotoShape==='hexagon'?'on':''}" onclick="S.fotoShape='hexagon';render();renderMobPanel()" style="padding:5px;font-size:.85rem">⬡</div>
+      </div>
     `:''}
     ${S.mode==='collage'?`
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 0 10px">
@@ -1291,10 +1393,10 @@ const MOB_PANELS = {
 
   plantilla: ()=>`
     <div class="tpl-grid">
-      ${['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista'].map(k=>`
+      ${['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista','policialesrojo','franjarojo','urgenterojo'].map(k=>`
         <div class="tpl-btn ${S.tpl===k?'on':''}" onclick="setTpl('${k}');renderMobPanel()">
           <canvas class="tpl-prev" id="mtp-${k}"></canvas>
-          <div class="tpl-name">${{normal:'Normal',moderna:'Moderna',banda:'Banda',impacto:'Impacto',diagonal:'Diagonal',verde:'Verde MM',policiales:'Policiales',clima:'Clima',urgente:'Urgente',economia:'Economía',franja:'Franja',titular:'Titular',minimalista:'Minimalista'}[k]}</div>
+          <div class="tpl-name">${{normal:'Normal',moderna:'Moderna',banda:'Banda',impacto:'Impacto',diagonal:'Diagonal',verde:'Verde MM',policiales:'Policiales',clima:'Clima',urgente:'Urgente',economia:'Economía',franja:'Franja',titular:'Titular',minimalista:'Minimalista',policialesrojo:'Policiales 🔴',franjarojo:'Franja 🔴',urgenterojo:'Urgente 🔴'}[k]}</div>
         </div>`).join('')}
     </div>`,
 
@@ -1451,7 +1553,7 @@ function renderMobPanel(){
   // draw previews in plantilla panel
   if(_activeTab==='plantilla'){
     requestAnimationFrame(()=>{
-      ['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista'].forEach(k=>{
+      ['normal','moderna','banda','impacto','diagonal','verde','policiales','clima','urgente','economia','franja','titular','minimalista','policialesrojo','franjarojo','urgenterojo'].forEach(k=>{
         const c=document.getElementById('mtp-'+k);if(!c)return;
         drawPreviewOnCanvas(c,k);
       });
@@ -1463,6 +1565,7 @@ function bindMobEvents(){
   const mi=document.getElementById('m-imgUp');
   if(mi) mi.addEventListener('change',loadLocalImg);
   const mbg2=document.getElementById('m-bgUp2');if(mbg2)mbg2.addEventListener('change',loadLocalImg);
+  const mtbg=document.getElementById('m-textualBgUp');if(mtbg)mtbg.addEventListener('change',loadLocalImg);
   const mf=document.getElementById('m-fotoUp');if(mf)mf.addEventListener('change',loadFotoImg);
   const mc0=document.getElementById('m-coll0');if(mc0)mc0.addEventListener('change',e=>loadCollageImg(e,0));
   const mc1=document.getElementById('m-coll1');if(mc1)mc1.addEventListener('change',e=>loadCollageImg(e,1));
