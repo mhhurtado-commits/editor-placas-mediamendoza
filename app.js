@@ -1245,9 +1245,16 @@ function clearAll(){
   S.mode='normal'; S.quote=''; S.quoteAuthor=''; S.quoteStyle='verde';
   S.fotoImg=null; S.fotoSize=0.28; S.fotoX=0.72; S.fotoY=0.18; S.fotoBorder='#a6ce39'; S.fotoShape='circle';
   S.quoteSplit=0.5; S.quotePos='left'; S.quoteTextCol='';
-  S.collageImgs=[null,null]; S.collageSplit=0.5;
+  S.collageImgs=[null,null,null,null]; S.collageLayout='2h';
+  // Volver a plantilla normal + formato portrait
+  S.tpl='normal'; S.fmt='portrait';
   setMode('normal');
-  render(); drawPreviews();
+  document.querySelectorAll('.tpl-btn').forEach(b=>b.classList.remove('on'));
+  const nb=document.getElementById('tpl-normal');if(nb)nb.classList.add('on');
+  document.querySelectorAll('[id^="fp-"]').forEach(el=>el.classList.remove('on'));
+  const fp=document.getElementById('fp-portrait');if(fp)fp.classList.add('on');
+  const fl=document.getElementById('fmtLbl');if(fl)fl.textContent=FMTS['portrait'].lbl;
+  resizeCanvas(); render(); drawPreviews();
   if(_panelOpen) renderMobPanel();
   showToast('✅ Placa reiniciada');
 }
@@ -1628,9 +1635,10 @@ REGLAS DE ORO:
 1. No inventar datos. No completar información que no esté en el texto de entrada.
 2. Solo incluir el link si el usuario lo proporciona. Prohibido inventar URLs.
 3. CIUDAD: Media Mendoza cubre el sur mendocino. La ciudad por defecto es SAN RAFAEL. Usá "GENERAL ALVEAR" o "MALARGÜE" solo si la nota lo menciona explícitamente. Nunca usar solo "MENDOZA" — siempre la ciudad específica del sur.
-4. URL CORTA: Si la URL tiene la forma https://mediamendoza.com/categoria/123456-texto-largo, acortarla a https://mediamendoza.com/categoria/123456 — solo dominio + categoría + número de nota, sin el slug de texto.
-5. Para el mensaje de GRUPO: crear un gancho que genere tensión/curiosidad sin revelar el desenlace. Máximo 3 líneas antes del link.
-6. Longitud máxima: Grupo = 8 líneas totales. Canal = 12 líneas totales.
+4. CATEGORÍA: Es clave para el tono y los emojis. Policiales → tono urgente, emoji 🚨. Política → 🏛️. Economía → 💰. Deportes → ⚽. Cultura → 🎭. Salud → 🏥. Clima/Tiempo → 🌦️. Turismo → 🏔️. Sociedad/Comunidad → 👥. Usá la categoría para elegir el emoji del encabezado y para darle el tono correcto al mensaje.
+5. URL CORTA: Si la URL tiene la forma https://mediamendoza.com/categoria/123456-texto-largo, acortarla a https://mediamendoza.com/categoria/123456 — solo dominio + categoría + número de nota, sin el slug de texto.
+6. Para el mensaje de GRUPO: crear un gancho que genere tensión/curiosidad sin revelar el desenlace. Máximo 3 líneas antes del link.
+7. Longitud máxima: Grupo = 8 líneas totales. Canal = 12 líneas totales.
 
 FORMATO DE SALIDA — MUY IMPORTANTE: responder ÚNICAMENTE con el siguiente JSON, sin ningún texto antes ni después, sin backticks, sin markdown:
 {"grupo":"mensaje completo aquí","canal":"mensaje completo aquí"}
