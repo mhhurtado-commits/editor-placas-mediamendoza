@@ -35,6 +35,7 @@ let S={
   quote:'',       // texto de la cita
   quoteAuthor:'', // autor / fuente
   quoteStyle:'verde', // 'verde'|'negro'|'blanco'
+  quoteTextCol:'', // '' = automático según estilo, o color custom
   // ── modo foto ──
   fotoImg:null,   // imagen del círculo
   fotoShape:'circle', // 'circle'|'square'|'diamond'
@@ -381,16 +382,25 @@ function renderTextual(W,H){
   if(pos==='top')   ctx.fillRect(cr.x,cr.y,cr.w,4);
   if(pos==='bottom')ctx.fillRect(cr.x,cr.y+cr.h-4,cr.w,4);
 
-  // ── Logo en panel color ──
-  const textCol=isVerde||isBlanco?'#111111':'#ffffff';
+  // ── Logo en panel color — usa ELS.logo para ser draggable ──
+  const autoTextCol=isVerde||isBlanco?'#111111':'#ffffff';
+  const textCol=S.quoteTextCol||autoTextCol;
   if(S.logoImg){
-    const lw=Math.round(cr.w*.55);
-    const lh=Math.round(lw*(S.logoImg.height/S.logoImg.width));
+    // Forzar posición del logo dentro del panel color si no fue movido manualmente
+    ensurePos('logo');
+    const el=ELS.logo;
+    if(el._textualInit!==S.quotePos+S.quoteSplit){
+      const lw=Math.round(cr.w*.55);
+      const lh=Math.round(lw*(S.logoImg.height/S.logoImg.width));
+      el.x=cr.x+Math.round(cr.w*.06);el.y=cr.y+Math.round(cr.h*.05);
+      el.w=lw;el.h=lh;
+      el._textualInit=S.quotePos+S.quoteSplit;
+    }
     ctx.save();
     if(style==='verde')ctx.filter='brightness(0) invert(1)';
     else if(style==='blanco')ctx.filter='brightness(0)';
     ctx.globalAlpha=S.lOp;
-    ctx.drawImage(S.logoImg,cr.x+Math.round(cr.w*.06),cr.y+Math.round(cr.h*.05),lw,lh);
+    ctx.drawImage(S.logoImg,ELS.logo.x,ELS.logo.y,ELS.logo.w,ELS.logo.h);
     ctx.filter='none';ctx.restore();
   }
 
@@ -1234,7 +1244,7 @@ function clearAll(){
   if(ovTog)ovTog.checked=false;
   S.mode='normal'; S.quote=''; S.quoteAuthor=''; S.quoteStyle='verde';
   S.fotoImg=null; S.fotoSize=0.28; S.fotoX=0.72; S.fotoY=0.18; S.fotoBorder='#a6ce39'; S.fotoShape='circle';
-  S.quoteSplit=0.5; S.quotePos='left';
+  S.quoteSplit=0.5; S.quotePos='left'; S.quoteTextCol='';
   S.collageImgs=[null,null]; S.collageSplit=0.5;
   setMode('normal');
   render(); drawPreviews();
@@ -1342,6 +1352,14 @@ const MOB_PANELS = {
       <label class="uplbl" for="m-textualBgUp" style="margin-top:6px">📁 Foto de fondo (opcional)</label>
       <input type="file" id="m-textualBgUp" accept="image/*">
       <button class="btn-reset" onclick="S.bgImg=null;render()" style="margin-top:4px;width:100%;text-align:center">✕ Quitar foto</button>
+      <label class="fl" style="margin-top:8px">Color del texto</label>
+      <div class="swatches">
+        <input type="color" value="${S.quoteTextCol||'#111111'}" oninput="S.quoteTextCol=this.value;render()">
+        <div class="sw on" style="background:linear-gradient(135deg,#111 50%,#fff 50%);border-color:#ccc" onclick="S.quoteTextCol='';render()" title="Auto"></div>
+        <div class="sw" style="background:#fff;border-color:#ccc" onclick="S.quoteTextCol='#ffffff';render()"></div>
+        <div class="sw" style="background:#111" onclick="S.quoteTextCol='#111111';render()"></div>
+        <div class="sw" style="background:#a6ce39" onclick="S.quoteTextCol='#a6ce39';render()"></div>
+      </div>
     `:''}
     ${S.mode==='foto'?`
       <label class="uplbl" for="m-bgUp2">📁 Imagen de fondo (noticia)</label>
@@ -1687,24 +1705,29 @@ async function waGenerate(){
 Categoría: ${categoria}${url?'\nURL: '+url:''}${extra?'\nContexto adicional: '+extra:''}`;
 
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    // El Worker hace de proxy para evitar CORS con la API de Anthropic
+    const res=await fetch(WORKER+'?ai=1',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
         system:WA_PROMPT,
-        messages:[{role:'user',content:'Generá los dos mensajes para esta nota:\n\n'+entrada}]
+        user:'Generá los dos mensajes para esta nota:\n\n'+entrada
       })
     });
+    if(!res.ok){
+      const errText=await res.text();
+      throw new Error('Worker error '+res.status+': '+errText);
+    }
     const data=await res.json();
-    const raw=data.content?.find(b=>b.type==='text')?.text||'{}';
+    if(data.error) throw new Error(data.error);
+    const raw=typeof data==='string'?data:(data.text||data.content||'{}');
     const clean=raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
     const parsed=JSON.parse(clean);
     _waMessages.grupo=parsed.grupo||'No se pudo generar el mensaje de grupo.';
     _waMessages.canal=parsed.canal||'No se pudo generar el mensaje de canal.';
   }catch(e){
-    _waMessages.grupo='Error al generar. Verificá que la nota tenga título cargado.';
+    console.error('WA generate error:',e);
+    _waMessages.grupo='Error: '+e.message;
     _waMessages.canal=_waMessages.grupo;
   }
 
