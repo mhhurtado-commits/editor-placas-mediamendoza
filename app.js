@@ -1631,11 +1631,11 @@ REGLAS DE ORO:
 4. Para el mensaje de GRUPO: crear un gancho que genere tensión/curiosidad sin revelar el desenlace. Máximo 3 líneas antes del link.
 5. Longitud máxima: Grupo = 8 líneas totales. Canal = 12 líneas totales.
 
-FORMATO DE SALIDA — responder SOLO con JSON válido, sin texto extra, sin backticks:
-{
-  "grupo": "mensaje completo para grupo",
-  "canal": "mensaje completo para canal"
-}
+FORMATO DE SALIDA — MUY IMPORTANTE: responder ÚNICAMENTE con el siguiente JSON, sin ningún texto antes ni después, sin backticks, sin markdown:
+{"grupo":"mensaje completo aquí","canal":"mensaje completo aquí"}
+
+Si el mensaje incluye comillas dobles dentro del texto, reemplazarlas por comillas simples.
+No usar saltos de línea dentro de los valores JSON — usar el caracter \n como texto.
 
 ESTRUCTURA GRUPO (Estilo Alerta):
 - Encabezado: [emoji categoría] *CIUDAD: TITULAR GANCHO EN MAYÚSCULAS*
@@ -1720,13 +1720,34 @@ Categoría: ${categoria}${url?'\nURL: '+url:''}${extra?'\nContexto adicional: '+
     }
     const data=await res.json();
     if(data.error) throw new Error(data.error);
-    const raw=typeof data==='string'?data:(data.text||data.content||'{}');
-    // Limpiar posibles backticks y extraer solo el JSON
-    let clean=raw.replace(/```json/gi,'').replace(/```/g,'').trim();
-    // Extraer el objeto JSON si hay texto antes o después
-    const jsonMatch=clean.match(/\{[\s\S]*\}/);
-    if(!jsonMatch) throw new Error('Respuesta de IA no contiene JSON válido');
-    const parsed=JSON.parse(jsonMatch[0]);
+    const raw=typeof data==='string'?data:(data.text||data.content||'');
+    if(!raw) throw new Error('Respuesta vacía del modelo');
+
+    // Estrategia 1: intentar parsear JSON
+    let parsed=null;
+    try{
+      let clean=raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+      const jsonMatch=clean.match(/\{[\s\S]*\}/);
+      if(jsonMatch) parsed=JSON.parse(jsonMatch[0]);
+    }catch(e){}
+
+    // Estrategia 2: buscar delimitadores ===GRUPO=== y ===CANAL===
+    if(!parsed){
+      const gMatch=raw.match(/===GRUPO===[\s\S]*?\n([\s\S]*?)(?===CANAL===|$)/i);
+      const cMatch=raw.match(/===CANAL===[\s\S]*?\n([\s\S]*?)$/i);
+      if(gMatch||cMatch){
+        parsed={
+          grupo:(gMatch?gMatch[1].trim():''),
+          canal:(cMatch?cMatch[1].trim():'')
+        };
+      }
+    }
+
+    // Estrategia 3: usar toda la respuesta como grupo, indicar que faltó el canal
+    if(!parsed){
+      parsed={grupo:raw.trim(), canal:'(Regenerá para obtener versión canal)'};
+    }
+
     _waMessages.grupo=parsed.grupo||'No se pudo generar el mensaje de grupo.';
     _waMessages.canal=parsed.canal||'No se pudo generar el mensaje de canal.';
   }catch(e){
