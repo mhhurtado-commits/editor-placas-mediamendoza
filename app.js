@@ -1104,6 +1104,9 @@ async function fetchUrl(){
     document.getElementById('titIn').value=data.title||'';S.title=data.title||'';
     const cat=(data.category||'').replace(/_/g,' ');
     document.getElementById('catIn').value=cat;S.cat=cat;
+    // Guardar descripción y cuerpo para el generador WA
+    S._waDesc=data.description||'';
+    S._waBody=data.body||'';
     ELS.title={x:null,y:null,w:null,h:null,visible:true};
     ELS.cat={x:null,y:null,w:null,h:null,visible:true};
     if(data.image)await loadRemoteImg(data.image);
@@ -1723,8 +1726,10 @@ async function waGenerate(){
   const categoria=S.cat||'';
   const extra=document.getElementById('waExtraInput')?.value.trim()||'';
 
+  const desc=S._waDesc||'';
+  const body=S._waBody||'';
   const entrada=`Título: ${titulo}
-Categoría: ${categoria}${url?'\nURL: '+url:''}${extra?'\nContexto adicional: '+extra:''}`;
+Categoría: ${categoria}${desc?'\nDescripción: '+desc:''}${body?'\nContenido de la nota: '+body:''}${url?'\nURL: '+url:''}${extra?'\nContexto adicional: '+extra:''}`;
 
   try{
     // El Worker hace de proxy para evitar CORS con la API de Anthropic
