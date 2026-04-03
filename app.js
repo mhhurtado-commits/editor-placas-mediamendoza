@@ -1721,8 +1721,12 @@ Categoría: ${categoria}${url?'\nURL: '+url:''}${extra?'\nContexto adicional: '+
     const data=await res.json();
     if(data.error) throw new Error(data.error);
     const raw=typeof data==='string'?data:(data.text||data.content||'{}');
-    const clean=raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
-    const parsed=JSON.parse(clean);
+    // Limpiar posibles backticks y extraer solo el JSON
+    let clean=raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+    // Extraer el objeto JSON si hay texto antes o después
+    const jsonMatch=clean.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error('Respuesta de IA no contiene JSON válido');
+    const parsed=JSON.parse(jsonMatch[0]);
     _waMessages.grupo=parsed.grupo||'No se pudo generar el mensaje de grupo.';
     _waMessages.canal=parsed.canal||'No se pudo generar el mensaje de canal.';
   }catch(e){
