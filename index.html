@@ -108,7 +108,18 @@
       <label class="fl">Tamaño del panel <span class="rval" id="rv-quoteSplit">50%</span></label>
       <div class="rrow"><input type="range" id="r-quoteSplit" min="30" max="70" value="50"
         oninput="S.quoteSplit=this.value/100;document.getElementById('rv-quoteSplit').textContent=this.value+'%';ELS.title._textualInit=null;render()"></div>
-      <label class="fl" style="margin-top:6px">Foto de fondo <span style="font-size:.72rem;color:var(--g60)">(opcional)</span></label>
+      <label class="fl" style="margin-top:8px">Color del texto</label>
+      <div class="swatches">
+        <input type="color" id="qtCol" value="#111111" oninput="S.quoteTextCol=this.value;render()">
+        <div class="sw on" id="qtc-auto" style="background:linear-gradient(135deg,#111 50%,#fff 50%);border-color:#ccc" onclick="S.quoteTextCol='';document.querySelectorAll('[id^=qtc-]').forEach(b=>b.classList.remove('on'));this.classList.add('on');render()" title="Auto"></div>
+        <div class="sw" id="qtc-white" style="background:#fff;border-color:#ccc" onclick="S.quoteTextCol='#ffffff';document.querySelectorAll('[id^=qtc-]').forEach(b=>b.classList.remove('on'));this.classList.add('on');render()"></div>
+        <div class="sw" id="qtc-black" style="background:#111" onclick="S.quoteTextCol='#111111';document.querySelectorAll('[id^=qtc-]').forEach(b=>b.classList.remove('on'));this.classList.add('on');render()"></div>
+        <div class="sw" id="qtc-green" style="background:#a6ce39" onclick="S.quoteTextCol='#a6ce39';document.querySelectorAll('[id^=qtc-]').forEach(b=>b.classList.remove('on'));this.classList.add('on');render()"></div>
+      </div>
+      <div style="background:var(--g10);border-radius:6px;padding:7px 10px;margin:8px 0 4px;font-size:.74rem;color:var(--g70)">
+        🖱️ <strong>Logo:</strong> arrastrá y redimensionás sobre el canvas. <strong>Texto:</strong> idem.
+      </div>
+      <label class="fl">Foto de fondo <span style="font-size:.72rem;color:var(--g60)">(opcional)</span></label>
       <button class="uplbl" onclick="document.getElementById('textualBgUp').click()" style="cursor:pointer;display:block;width:100%;text-align:left">📁 Subir foto de fondo</button>
       <button class="btn-reset" onclick="S.bgImg=null;render()" style="margin-top:4px;width:100%;text-align:center">✕ Quitar foto</button>
     </div>
@@ -206,16 +217,16 @@
           <div class="tpl-btn"   onclick="setTpl('impacto')"    id="tpl-impacto">   <canvas class="tpl-prev" id="tp-impacto"></canvas>   <div class="tpl-name">Impacto</div></div>
           <div class="tpl-btn"   onclick="setTpl('diagonal')"   id="tpl-diagonal">  <canvas class="tpl-prev" id="tp-diagonal"></canvas>  <div class="tpl-name">Diagonal</div></div>
           <div class="tpl-btn"   onclick="setTpl('verde')"      id="tpl-verde">     <canvas class="tpl-prev" id="tp-verde"></canvas>     <div class="tpl-name">Verde MM</div></div>
-          <div class="tpl-btn"   onclick="setTpl('policiales')" id="tpl-policiales"><canvas class="tpl-prev" id="tp-policiales"></canvas><div class="tpl-name">Policiales</div></div>
-          <div class="tpl-btn"   onclick="setTpl('clima')"      id="tpl-clima">     <canvas class="tpl-prev" id="tp-clima"></canvas>     <div class="tpl-name">Clima</div></div>
-          <div class="tpl-btn"   onclick="setTpl('urgente')"    id="tpl-urgente">   <canvas class="tpl-prev" id="tp-urgente"></canvas>   <div class="tpl-name">Urgente</div></div>
-          <div class="tpl-btn"   onclick="setTpl('economia')"    id="tpl-economia">   <canvas class="tpl-prev" id="tp-economia"></canvas>   <div class="tpl-name">Economía</div></div>
-          <div class="tpl-btn"   onclick="setTpl('franja')"      id="tpl-franja">     <canvas class="tpl-prev" id="tp-franja"></canvas>     <div class="tpl-name">Franja</div></div>
-          <div class="tpl-btn"   onclick="setTpl('titular')"     id="tpl-titular">    <canvas class="tpl-prev" id="tp-titular"></canvas>    <div class="tpl-name">Titular</div></div>
-          <div class="tpl-btn"   onclick="setTpl('minimalista')"   id="tpl-minimalista">  <canvas class="tpl-prev" id="tp-minimalista"></canvas>  <div class="tpl-name">Minimalista</div></div>
+          <div class="tpl-btn"   onclick="setTpl('policiales')"    id="tpl-policiales">   <canvas class="tpl-prev" id="tp-policiales"></canvas>   <div class="tpl-name">Policiales</div></div>
           <div class="tpl-btn"   onclick="setTpl('policialesrojo')" id="tpl-policialesrojo"><canvas class="tpl-prev" id="tp-policialesrojo"></canvas><div class="tpl-name">Policiales 🔴</div></div>
+          <div class="tpl-btn"   onclick="setTpl('franja')"         id="tpl-franja">        <canvas class="tpl-prev" id="tp-franja"></canvas>        <div class="tpl-name">Franja</div></div>
           <div class="tpl-btn"   onclick="setTpl('franjarojo')"     id="tpl-franjarojo">    <canvas class="tpl-prev" id="tp-franjarojo"></canvas>    <div class="tpl-name">Franja 🔴</div></div>
+          <div class="tpl-btn"   onclick="setTpl('urgente')"        id="tpl-urgente">       <canvas class="tpl-prev" id="tp-urgente"></canvas>       <div class="tpl-name">Urgente</div></div>
           <div class="tpl-btn"   onclick="setTpl('urgenterojo')"    id="tpl-urgenterojo">   <canvas class="tpl-prev" id="tp-urgenterojo"></canvas>   <div class="tpl-name">Urgente 🔴</div></div>
+          <div class="tpl-btn"   onclick="setTpl('clima')"          id="tpl-clima">         <canvas class="tpl-prev" id="tp-clima"></canvas>         <div class="tpl-name">Clima</div></div>
+          <div class="tpl-btn"   onclick="setTpl('economia')"       id="tpl-economia">      <canvas class="tpl-prev" id="tp-economia"></canvas>      <div class="tpl-name">Economía</div></div>
+          <div class="tpl-btn"   onclick="setTpl('titular')"        id="tpl-titular">       <canvas class="tpl-prev" id="tp-titular"></canvas>       <div class="tpl-name">Titular</div></div>
+          <div class="tpl-btn"   onclick="setTpl('minimalista')"    id="tpl-minimalista">   <canvas class="tpl-prev" id="tp-minimalista"></canvas>   <div class="tpl-name">Minimalista</div></div>
         </div>
       </div>
     </div>
